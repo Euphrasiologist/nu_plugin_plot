@@ -2,7 +2,7 @@
 //! representation of data from nushell
 
 use nu_plugin::{EvaluatedCall, LabeledError, Plugin};
-use nu_protocol::{Category, Signature, Value};
+use nu_protocol::{Category, Signature, SyntaxShape, Value};
 use textplots::{Chart, Plot, Shape};
 pub struct Plotter;
 
@@ -10,7 +10,31 @@ impl Plotter {
     // some functions to do with plot types
     fn plot(&self, call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError> {
         // cli opts
-        // let max_x = call.get_flag("max-x")?;
+        let max_x_op: Option<u32> = match call.get_flag("max-x") {
+            Ok(x) => x.map(|e: i64| e as u32),
+            Err(e) => {
+                return Err(LabeledError {
+                    label: "".into(),
+                    msg: format!("Reason: {}", e),
+                    span: Some(call.head),
+                })
+            }
+        };
+
+        let max_y_op: Option<u32> = match call.get_flag("max-y") {
+            Ok(y) => y.map(|e: i64| e as u32),
+            Err(e) => {
+                return Err(LabeledError {
+                    label: "".into(),
+                    msg: format!("Reason: {}", e),
+                    span: Some(call.head),
+                })
+            }
+        };
+
+        let max_x = max_x_op.unwrap_or(200);
+        let max_y = max_y_op.unwrap_or(50);
+
         let values = match input.as_list() {
             Ok(v) => v,
             Err(e) => panic!("{:?}", e),
@@ -38,7 +62,7 @@ impl Plotter {
             min_max(&x)
         };
 
-        let chart = Chart::new(250, 50, min_max_x.0, min_max_x.1)
+        let chart = Chart::new(max_x, max_y, min_max_x.0, min_max_x.1)
             .lineplot(&Shape::Lines(&v))
             .to_string();
 
@@ -54,6 +78,18 @@ impl Plugin for Plotter {
     fn signature(&self) -> Vec<Signature> {
         vec![Signature::build("plot")
             .usage("Render an ASCII plot from a list of values.")
+            .named(
+                "max-x",
+                SyntaxShape::Number,
+                "The maximum width of the plot.",
+                Some('x'),
+            )
+            .named(
+                "max-y",
+                SyntaxShape::Number,
+                "The maximum height of the plot.",
+                Some('y'),
+            )
             .category(Category::Experimental)]
     }
 
