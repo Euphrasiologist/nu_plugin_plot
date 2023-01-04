@@ -1,10 +1,12 @@
 //! A small crate to plot an ASCII
-//! representation of data from nushell
+//! representation of a List data type from nushell
 
 use nu_plugin::{EvaluatedCall, LabeledError, Plugin};
 use nu_protocol::{Category, Signature, SyntaxShape, Type, Value};
 use rgb::RGB8;
-use textplots::{Chart, Plot, Shape};
+use textplots::{Chart, ColorPlot, Plot, Shape};
+
+/// `Plotter` struct passed to nu.
 pub struct Plotter;
 
 /// So the chart is not hard up against the left of the terminal.
@@ -36,8 +38,19 @@ const COLORS: &[RGB8] = &[
     },
 ];
 
+/// Return the minimum and the maximum of a slice of `f32`.
+fn min_max(series: &[f32]) -> (f32, f32) {
+    let min = series
+        .iter()
+        .fold(std::f32::MAX, |accu, &x| if x < accu { x } else { accu });
+    let max = series
+        .iter()
+        .fold(std::f32::MIN, |accu, &x| if x > accu { x } else { accu });
+    (min, max)
+}
+
 impl Plotter {
-    // some functions to do with plot types
+    /// Plot a single list of numbers.
     fn plot(&self, call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError> {
         // cli opts
         let max_x_op: Option<u32> = call.get_flag("max-x").map(|e| e.map(|f: i64| f as u32))?;
@@ -62,17 +75,6 @@ impl Plotter {
             })
             .collect();
 
-        // min/max
-        fn min_max(series: &[f32]) -> (f32, f32) {
-            let min = series
-                .iter()
-                .fold(std::f32::MAX, |accu, &x| if x < accu { x } else { accu });
-            let max = series
-                .iter()
-                .fold(std::f32::MIN, |accu, &x| if x > accu { x } else { accu });
-            (min, max)
-        }
-
         let min_max_x = {
             let x: Vec<f32> = v.clone().unwrap().iter().map(|e| e.0).collect();
             min_max(&x)
@@ -86,6 +88,101 @@ impl Plotter {
 
         Ok(Value::String {
             val: chart,
+            span: call.head,
+        })
+    }
+
+    /// Plot a nested list of numbers.
+    ///
+    /// It's guaranteed when calling this function that
+    /// the input is a nested list with each element of equal length
+    /// and type (int/float)
+    fn plot_nested(&self, call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError> {
+        // cli opts
+        let max_x_op: Option<u32> = call.get_flag("max-x").map(|e| e.map(|f: i64| f as u32))?;
+        let max_y_op: Option<u32> = call.get_flag("max-y").map(|e| e.map(|f: i64| f as u32))?;
+
+        let max_x = max_x_op.unwrap_or(200);
+        let max_y = max_y_op.unwrap_or(50);
+
+        let values = input.as_list()?;
+        if values.len() > 5 {
+            return Err(LabeledError {
+                label: "Nested list error.".into(),
+                msg: "Nested list can't contain more than 5 inner lists.".into(),
+                span: Some(call.head),
+            });
+        }
+
+        let mut data = vec![];
+
+        for val in values {
+            let list = val.as_list()?;
+
+            let v: Result<Vec<(f32, f32)>, LabeledError> = list
+                .iter()
+                .enumerate()
+                .map(|(i, e)| match e {
+                    Value::Int { val: _, span: _ } => Ok((i as f32, e.as_integer()? as f32)),
+                    Value::Float { val: _, span: _ } => Ok((i as f32, e.as_f64()? as f32)),
+                    e => Err(LabeledError {
+                        label: "Incorrect type supplied.".into(),
+                        msg: format!("Got {}, need integer or float.", e.get_type()),
+                        span: Some(call.head),
+                    }),
+                })
+                .collect();
+
+            let min_max_x = {
+                let x: Vec<f32> = v.clone().unwrap().iter().map(|e| e.0).collect();
+                min_max(&x)
+            };
+
+            data.push((min_max_x, v?));
+        }
+
+        let min_all: Vec<f32> = data.iter().map(|(e, _)| e.0).collect();
+        let max_all: Vec<f32> = data.iter().map(|(e, _)| e.1).collect();
+
+        let min = min_all.iter().fold(f32::INFINITY, |a, &b| a.min(b));
+        let max = max_all.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
+
+        let mut chart = Chart::new(max_x, max_y, min, *max);
+
+        let charts = match data.len() {
+            1 => {
+                chart.linecolorplot(&Shape::Lines(&data[0].1), COLORS[0]).to_string()
+            },
+            2 => {
+                chart.linecolorplot(&Shape::Lines(&data[0].1), COLORS[0])
+                     .linecolorplot(&Shape::Lines(&data[1].1), COLORS[1]).to_string()
+            },
+            3 => {
+                chart.linecolorplot(&Shape::Lines(&data[0].1), COLORS[0])
+                     .linecolorplot(&Shape::Lines(&data[1].1), COLORS[1])
+                     .linecolorplot(&Shape::Lines(&data[2].1), COLORS[2]).to_string()
+            },
+            4 => {
+                chart.linecolorplot(&Shape::Lines(&data[0].1), COLORS[0])
+                .linecolorplot(&Shape::Lines(&data[1].1), COLORS[1])
+                .linecolorplot(&Shape::Lines(&data[2].1), COLORS[2])
+                .linecolorplot(&Shape::Lines(&data[3].1), COLORS[3]).to_string()
+            },
+            5 => {
+                chart.linecolorplot(&Shape::Lines(&data[0].1), COLORS[0])
+                .linecolorplot(&Shape::Lines(&data[1].1), COLORS[1])
+                .linecolorplot(&Shape::Lines(&data[2].1), COLORS[2])
+                .linecolorplot(&Shape::Lines(&data[3].1), COLORS[3])
+                .linecolorplot(&Shape::Lines(&data[4].1), COLORS[4]).to_string()
+            },
+            _ => unreachable!()
+        };
+
+
+        let final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
+
+        Ok(Value::String {
+            val: final_chart,
             span: call.head,
         })
     }
@@ -141,6 +238,21 @@ fn check_equality_of_list(
         });
     }
 
+    if let Some(_len) = first_len_op {
+        // *should* always unwrap without panicking...
+        let inner_type = l[0].as_list().unwrap()[0].get_type();
+        match inner_type {
+            Type::Float | Type::Int => (),
+            _ => {
+                return Err(LabeledError {
+                    label: "Incorrect type.".into(),
+                    msg: "Nested list elements not float or int.".into(),
+                    span: Some(call.head),
+                })
+            }
+        }
+    }
+
     Ok((first_type.clone(), *first_len_op))
 }
 
@@ -177,25 +289,36 @@ impl Plugin for Plotter {
                     Ok(list) => {
                         // so we have a list. what's in it? we need to check each inner value
                         if list.is_empty() {
-                            return Err(LabeledError { label: "No elements in the list.".into(), msg: "Can't plot a zero element list.".into(), span: Some(call.head) })
+                            return Err(LabeledError { 
+                                label: "No elements in the list.".into(), 
+                                msg: "Can't plot a zero element list.".into(), 
+                                span: Some(call.head) 
+                            })
                         }
 
                         let (value_type, list_len_op) = check_equality_of_list(list, call)?;
 
                         // if in fact we have a nested list
-                        if let Some(len) = list_len_op {
+                        if let Some(_len) = list_len_op {
                             // we haven't implemented this yet
-                            Ok(Value::String { val: format!("This nested list has {} elements in each.", len), span: call.head })
+                            self.plot_nested(call, input)
                         } else {
                             // we have a normal plot, single list of numbers
                             match value_type {
-                                Type::Float => self.plot(call, input),
-                                Type::Int => self.plot(call, input),
-                                e =>  Err(LabeledError { label: "Incorrect List type.".into(), msg: format!("List type is {}, but should be float or int.", e), span: Some(call.head) })
+                                Type::Float | Type::Int => self.plot(call, input),
+                                e =>  Err(LabeledError { 
+                                    label: "Incorrect List type.".into(), 
+                                    msg: format!("List type is {}, but should be float or int.", e), 
+                                    span: Some(call.head) 
+                                })
                             }
                         }
                     },
-                    Err(e) => return Err(LabeledError { label: "Incorrect input type.".into(), msg: format!("Input type is {}, but should be a List.", e), span: Some(call.head) }),
+                    Err(e) => return Err(LabeledError { 
+                        label: "Incorrect input type.".into(), 
+                        msg: format!("Input type is {}, but should be a List.", e), 
+                        span: Some(call.head) 
+                    }),
                 }
             }
             _ => Err(LabeledError {
