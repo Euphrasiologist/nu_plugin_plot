@@ -759,6 +759,7 @@ version = "0.73.0"
 dependencies = [
  "nu-plugin",
  "nu-protocol",
+ "rgb",
  "textplots",
 ]
 
