@@ -3,8 +3,12 @@
 
 use nu_plugin::{EvaluatedCall, LabeledError, Plugin};
 use nu_protocol::{Category, Signature, SyntaxShape, Type, Value};
-use rgb::RGB8;
-use textplots::{Chart, ColorPlot, Plot, Shape};
+pub mod color_plot;
+
+use color_plot::drawille::PixelColor;
+use color_plot::textplots::{Chart, ColorPlot, Plot, Shape};
+
+use owo_colors::OwoColorize;
 
 /// `Plotter` struct passed to nu.
 pub struct Plotter;
@@ -13,29 +17,12 @@ pub struct Plotter;
 const TAB: &str = "    ";
 
 /// Colors, five of them.
-const COLORS: &[RGB8] = &[
-    // dark turquoise
-    RGB8 {
-        r: 0,
-        g: 206,
-        b: 209,
-    },
-    // orange
-    RGB8 {
-        r: 255,
-        g: 165,
-        b: 0,
-    },
-    // lime
-    RGB8 { r: 0, g: 255, b: 0 },
-    // blue
-    RGB8 { r: 0, g: 0, b: 255 },
-    // pink
-    RGB8 {
-        r: 255,
-        g: 20,
-        b: 147,
-    },
+const COLORS: &[PixelColor] = &[
+    PixelColor::BrightWhite,
+    PixelColor::BrightRed,
+    PixelColor::BrightBlue,
+    PixelColor::BrightYellow,
+    PixelColor::Cyan
 ];
 
 /// Return the minimum and the maximum of a slice of `f32`.
@@ -55,6 +42,7 @@ impl Plotter {
         // cli opts
         let max_x_op: Option<u32> = call.get_flag("max-x").map(|e| e.map(|f: i64| f as u32))?;
         let max_y_op: Option<u32> = call.get_flag("max-y").map(|e| e.map(|f: i64| f as u32))?;
+        let legend = call.has_flag("legend");
 
         let max_x = max_x_op.unwrap_or(200);
         let max_y = max_y_op.unwrap_or(50);
@@ -80,11 +68,15 @@ impl Plotter {
             min_max(&x)
         };
 
-        let chart = Chart::new(max_x, max_y, min_max_x.0, min_max_x.1)
+        let mut chart = Chart::new(max_x, max_y, min_max_x.0, min_max_x.1)
             .lineplot(&Shape::Lines(&v.unwrap()))
             .to_string();
 
-        let chart = TAB.to_owned() + &chart.replace('\n', &format!("\n{}", TAB));
+        chart = TAB.to_owned() + &chart.replace('\n', &format!("\n{}", TAB));
+
+        if legend {
+            chart += &format!("Line 1: {}", "---".white());
+        }
 
         Ok(Value::String {
             val: chart,
@@ -101,6 +93,7 @@ impl Plotter {
         // cli opts
         let max_x_op: Option<u32> = call.get_flag("max-x").map(|e| e.map(|f: i64| f as u32))?;
         let max_y_op: Option<u32> = call.get_flag("max-y").map(|e| e.map(|f: i64| f as u32))?;
+        let legend = call.has_flag("legend");
 
         let max_x = max_x_op.unwrap_or(200);
         let max_y = max_y_op.unwrap_or(50);
@@ -150,9 +143,6 @@ impl Plotter {
         let mut chart = Chart::new(max_x, max_y, min, *max);
 
         let charts = match data.len() {
-            1 => {
-                chart.linecolorplot(&Shape::Lines(&data[0].1), COLORS[0]).to_string()
-            },
             2 => {
                 chart.linecolorplot(&Shape::Lines(&data[0].1), COLORS[0])
                      .linecolorplot(&Shape::Lines(&data[1].1), COLORS[1]).to_string()
@@ -179,7 +169,14 @@ impl Plotter {
         };
 
 
-        let final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
+        let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
+
+        if legend {
+            for (l, (_, _)) in data.iter().enumerate() {
+                let col: PixelColor = COLORS[l];
+                final_chart += &format!("Line {}: {} ", l + 1, "---".color(col));
+            }
+        }
 
         Ok(Value::String {
             val: final_chart,
@@ -273,6 +270,13 @@ impl Plugin for Plotter {
                 "The maximum height of the plot.",
                 Some('y'),
             )
+            .named(
+                "title",
+                SyntaxShape::String,
+                "The maximum height of the plot.",
+                Some('y'),
+            )
+            .switch("legend", "Plot a tiny, maybe useful legend.", Some('l'))
             .category(Category::Experimental)]
     }
 
