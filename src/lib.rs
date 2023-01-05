@@ -43,6 +43,7 @@ impl Plotter {
         let max_x_op: Option<u32> = call.get_flag("max-x").map(|e| e.map(|f: i64| f as u32))?;
         let max_y_op: Option<u32> = call.get_flag("max-y").map(|e| e.map(|f: i64| f as u32))?;
         let legend = call.has_flag("legend");
+        let title: Option<String> = call.get_flag("title")?;
 
         let max_x = max_x_op.unwrap_or(200);
         let max_y = max_y_op.unwrap_or(50);
@@ -72,6 +73,9 @@ impl Plotter {
             .lineplot(&Shape::Lines(&v.unwrap()))
             .to_string();
 
+        if let Some(t) = title {
+            chart = TAB.to_owned() + &t + "\n" + &chart;
+        }
         chart = TAB.to_owned() + &chart.replace('\n', &format!("\n{}", TAB));
 
         if legend {
@@ -94,6 +98,7 @@ impl Plotter {
         let max_x_op: Option<u32> = call.get_flag("max-x").map(|e| e.map(|f: i64| f as u32))?;
         let max_y_op: Option<u32> = call.get_flag("max-y").map(|e| e.map(|f: i64| f as u32))?;
         let legend = call.has_flag("legend");
+        let title: Option<String> = call.get_flag("title")?;
 
         let max_x = max_x_op.unwrap_or(200);
         let max_y = max_y_op.unwrap_or(50);
@@ -170,6 +175,10 @@ impl Plotter {
 
 
         let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
+        
+        if let Some(t) = title {
+            final_chart = TAB.to_owned() + &t + "\n" + &final_chart;
+        }
 
         if legend {
             for (l, (_, _)) in data.iter().enumerate() {
@@ -273,8 +282,8 @@ impl Plugin for Plotter {
             .named(
                 "title",
                 SyntaxShape::String,
-                "The maximum height of the plot.",
-                Some('y'),
+                "Provide a title to the plot.",
+                Some('t'),
             )
             .switch("legend", "Plot a tiny, maybe useful legend.", Some('l'))
             .category(Category::Experimental)]
