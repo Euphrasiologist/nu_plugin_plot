@@ -94,3 +94,7 @@ Plot:
 - [x] scatter plots (as a list of two numeric lists)
 - [x] histogram (list rendered as a bar chart)
 - [ ] records..?
+
+Please help me make this better! Submit issues/PR's, happy to chat.
+
+The color rendering inside nushell is slightly confusing - you may notice I've included my own modified copies of `textplots` and `drawille` in the source code. This is because their color rendering method was not working inside the plugin - I still don't know why.
