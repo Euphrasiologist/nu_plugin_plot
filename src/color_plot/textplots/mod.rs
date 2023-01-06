@@ -1,6 +1,6 @@
 //! A PERSONAL FORK OF 'textplots' VERSION 0.8.0 WITH
 //! SUPPORT FOR ANSI COLORS IN NUSHELL.
-//! 
+//!
 //! Terminal plotting library for using in CLI applications.
 //! Should work well in any unicode terminal with monospaced font.
 //!

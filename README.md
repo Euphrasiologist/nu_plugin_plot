@@ -2,7 +2,26 @@
 
 A small nu plugin to plot a list as a line graph.
 
+## Install
+
+Not yet on crates.io, so you'll have to clone this repository. I assume you have Rust, and are inside a nushell instance.
+
+```console
+git clone https://github.com/Euphrasiologist/nu_plugin_plot
+cd nu_plugin_plot
+
+cargo build --release
+register ./target/release/nu_plugin_plot
+
+# test commands
+plot -h
+hist -h
+xyplot -h
+```
+
 ## Help
+
+`plot`, `hist`, and `xyplot` have very similar helps, so I'll print out just plot here.
 
 ```console
 Render an ASCII plot from a list of values.
@@ -16,11 +35,16 @@ Flags:
   -y, --max-y <Number> - The maximum height of the plot.
   -t, --title <String> - Provide a title to the plot.
   -l, --legend - Plot a tiny, maybe useful legend.
+  -b, --bars - Change lines to bars.
+  -s, --steps - Change lines to steps.
+  -p, --points - Change lines to points.
 ```
 
 ## Examples
 
 ```console
+## basic 'plot'
+
 # plot a single line
 let one = (seq 0.0 0.01 20.0 | math sin)
 $one | plot
@@ -33,7 +57,28 @@ let two = (seq 1.0 0.01 21.0 | math sin)
 let three = (seq 2.0 0.01 22.0 | math sin)
 let four = (seq 3.0 0.01 23.0 | math sin)
 
-[$one $two $three $four] | plot -l -t "Four sin lines!"
+[$one $two $three $four] | plot -l -t "Four sine lines!"
+
+# bivariate 'xyplot'
+# input must be a two element nested list
+
+# make a nice ellipse
+[$one $two] | xyplot
+
+# bivariate line plot
+# diagonal dots!
+[(seq 1 100) (seq 1 100 | reverse)] | xyplot -p
+
+# plot histograms
+
+# compare two uniform distributions
+let r1 = (seq 1 100 | each { random integer ..30})
+let r2 = (seq 1 100 | each { random integer ..30})
+
+# -b for bars, otherwise you get lines by default
+[$r1 $r2] | hist -b
+# up the number of bins
+[$r1 $r2] | hist -b --bins 50
 
 ```
 
@@ -46,6 +91,6 @@ Plot:
   - [x] with colour support
   - [x] with legend
   - [x] with title
-- [ ] scatter plots (as a list of two numeric lists)
-- [ ] histogram (list rendered as a bar chart)
+- [x] scatter plots (as a list of two numeric lists)
+- [x] histogram (list rendered as a bar chart)
 - [ ] records..?
