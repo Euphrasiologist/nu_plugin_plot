@@ -13,3 +13,4 @@ nu-protocol = { version = "0.73.0", features = ["plugin"] }
 # textplots = "0.8.0"
 owo-colors = "3.5.0"
 fnv = "1.0.7"
+term_size = "0.3.2"

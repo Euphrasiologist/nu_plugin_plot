@@ -679,6 +679,7 @@ dependencies = [
  "nu-plugin",
  "nu-protocol",
  "owo-colors",
+ "term_size",
 ]
 
 [[package]]
@@ -1065,6 +1066,16 @@ dependencies = [
  "ntapi",
  "once_cell",
  "rayon",
+ "winapi",
+]
+
+[[package]]
+name = "term_size"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e4129646ca0ed8f45d09b929036bafad5377103edd06e50bf574b353d2b08d9"
+dependencies = [
+ "libc",
  "winapi",
 ]
 

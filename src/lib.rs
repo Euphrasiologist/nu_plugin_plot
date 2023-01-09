@@ -76,8 +76,32 @@ struct CliOpts {
 
 /// Parse the command line options.
 fn parse_cli_opts(call: &EvaluatedCall) -> Result<CliOpts, LabeledError> {
+    // scale the width and height to the size of the terminal unless specified on the cli
     let height_op: Option<u32> = call.get_flag("height").map(|e| e.map(|f: i64| f as u32))?;
     let width_op: Option<u32> = call.get_flag("width").map(|e| e.map(|f: i64| f as u32))?;
+
+    let mut height: Option<u32>;
+    let mut width: Option<u32>;
+
+    if let Some((w, h)) = term_size::dimensions() {
+        // don't know why I need to scale this, but I do - I hope it works
+        // as intended for other terminals.
+        height = Some(height_op.unwrap_or((h as f32 * 1.7) as u32));
+        width = Some(width_op.unwrap_or((w as f32 * 1.7) as u32));
+
+        // textplot panics if either of these are below 32 units.
+        if height.unwrap() < 32 {
+            height = Some(32);
+        }
+        if width.unwrap() < 32 {
+            width = Some(32);
+        }
+    } else {
+        // we couldnt detect terminal size for some reason
+        height = height_op;
+        width = width_op;
+    }
+
     let legend = call.has_flag("legend");
     let steps = call.has_flag("steps");
     let bars = call.has_flag("bars");
@@ -86,8 +110,8 @@ fn parse_cli_opts(call: &EvaluatedCall) -> Result<CliOpts, LabeledError> {
     let title: Option<String> = call.get_flag("title")?;
 
     Ok(CliOpts {
-        height_op,
-        width_op,
+        height_op: height,
+        width_op: width,
         legend,
         steps,
         bars,
