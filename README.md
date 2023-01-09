@@ -27,12 +27,12 @@ xyplot -h
 Render an ASCII plot from a list of values.
 
 Usage:
-  > plot {flags}
+  > plot {flags} 
 
 Flags:
   -h, --help - Display the help message for this command
-  -x, --max-x <Number> - The maximum width of the plot.
-  -y, --max-y <Number> - The maximum height of the plot.
+  --width <Number> - The maximum width of the plot.
+  --height <Number> - The maximum height of the plot.
   -t, --title <String> - Provide a title to the plot.
   -l, --legend - Plot a tiny, maybe useful legend.
   -b, --bars - Change lines to bars.
@@ -93,6 +93,7 @@ Plot:
   - [x] with title
 - [x] scatter plots (as a list of two numeric lists)
 - [x] histogram (list rendered as a bar chart)
+- [ ] nested xyplot (i.e. multiple xyplots on the same plot...)
 - [ ] records..?
 
 Please help me make this better! Submit issues/PR's, happy to chat.
