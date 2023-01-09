@@ -5,8 +5,6 @@
 //! - `plot` plots a 1-dimensional numeric list/nested list
 //! - `hist` plots a 1-dimensional numeric list/nested list
 //! - `xyplot` plots a 2-dimensional numeric list (nested list with length == 2)
-//!
-//! TODO: what should be the max-x of a histogram scale? My mind is blank.
 
 use nu_plugin::{EvaluatedCall, LabeledError, Plugin};
 use nu_protocol::{Category, Signature, SyntaxShape, Type, Value};
@@ -180,14 +178,21 @@ impl Plotter {
         let chart_data = match PlotType::from(plot_type) {
             PlotType::Plot => v,
             PlotType::Hist => {
+                let (min, max) = min_max(
+                    &v.clone()
+                        .unwrap()
+                        .iter()
+                        .map(|(_, e)| *e)
+                        .collect::<Vec<f32>>(),
+                );
                 let hist_data = histogram(
                     &v.unwrap(),
-                    0.0,
-                    bins.map(|e| e as f32).unwrap_or(20.0) - 1.0,
+                    min,
+                    max,
                     bins.map(|e| e as usize).unwrap_or(20),
                 );
 
-                min_max_x = (0.0, bins.map(|e| e as f32).unwrap_or(20.0) - 1.0);
+                min_max_x = (min, max);
 
                 Ok(hist_data)
             }
@@ -310,19 +315,30 @@ impl Plotter {
             PlotType::Plot => data.iter().map(|(_, e)| e.clone()).collect(),
             PlotType::Hist => {
                 // we need to adjust the x axis for the histogram.
+                let mut mins = 0.0;
+                let mut maxs = 0.0;
+
+                for (i, (_, el)) in data.iter().enumerate() {
+                    let (min, max) = min_max(&el.iter().map(|(_, e)| *e).collect::<Vec<f32>>());
+                    if i == 0 {
+                        maxs = max;
+                        mins = min;
+                    } else {
+                        if max > maxs {
+                            maxs = max;
+                        }
+                        if min < mins {
+                            mins = min;
+                        }
+                    }
+                }
+
                 let hist_data: Vec<Vec<(f32, f32)>> = data
                     .iter()
-                    .map(|(_, e)| {
-                        histogram(
-                            e,
-                            0.0,
-                            bins.map(|e| e as f32).unwrap_or(20.0) - 1.0,
-                            bins.map(|e| e as usize).unwrap_or(20),
-                        )
-                    })
+                    .map(|(_, e)| histogram(e, mins, maxs, bins.map(|e| e as usize).unwrap_or(20)))
                     .collect();
 
-                (min, max) = (0.0, bins.map(|e| e as f32).unwrap_or(20.0) - 1.0);
+                (min, max) = (mins, maxs);
 
                 hist_data
             }
@@ -512,16 +528,16 @@ impl Plugin for Plotter {
             Signature::build("plot")
                 .usage("Render an ASCII plot from a list of values.")
                 .named(
-                    "max-x",
+                    "width",
                     SyntaxShape::Number,
                     "The maximum width of the plot.",
-                    Some('x'),
+                    None,
                 )
                 .named(
-                    "max-y",
+                    "height",
                     SyntaxShape::Number,
                     "The maximum height of the plot.",
-                    Some('y'),
+                    None,
                 )
                 .named(
                     "title",
@@ -538,16 +554,16 @@ impl Plugin for Plotter {
             Signature::build("hist")
                 .usage("Render an ASCII histogram from a list of values.")
                 .named(
-                    "max-x",
+                    "width",
                     SyntaxShape::Number,
                     "The maximum width of the plot.",
-                    Some('x'),
+                    None,
                 )
                 .named(
-                    "max-y",
+                    "height",
                     SyntaxShape::Number,
                     "The maximum height of the plot.",
-                    Some('y'),
+                    None,
                 )
                 .named(
                     "title",
@@ -569,16 +585,16 @@ impl Plugin for Plotter {
             Signature::build("xyplot")
                 .usage("Render an ASCII xy plot from a list of values.")
                 .named(
-                    "max-x",
+                    "width",
                     SyntaxShape::Number,
                     "The maximum width of the plot.",
-                    Some('x'),
+                    None,
                 )
                 .named(
-                    "max-y",
+                    "height",
                     SyntaxShape::Number,
                     "The maximum height of the plot.",
-                    Some('y'),
+                    None,
                 )
                 .named(
                     "title",
