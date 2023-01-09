@@ -57,9 +57,9 @@ const COLORS: &[PixelColor] = &[
 /// These apply to `plot`, `hist`, and `xyplot`.
 struct CliOpts {
     /// The maximum y height of the plot.
-    max_y_op: Option<u32>,
+    height_op: Option<u32>,
     /// The maximum x width of the plot.
-    max_x_op: Option<u32>,
+    width_op: Option<u32>,
     /// Add a legend to the plot.
     legend: bool,
     /// Render a step plot, instead of a line plot.
@@ -76,8 +76,8 @@ struct CliOpts {
 
 /// Parse the command line options.
 fn parse_cli_opts(call: &EvaluatedCall) -> Result<CliOpts, LabeledError> {
-    let max_x_op: Option<u32> = call.get_flag("max-x").map(|e| e.map(|f: i64| f as u32))?;
-    let max_y_op: Option<u32> = call.get_flag("max-y").map(|e| e.map(|f: i64| f as u32))?;
+    let height_op: Option<u32> = call.get_flag("height").map(|e| e.map(|f: i64| f as u32))?;
+    let width_op: Option<u32> = call.get_flag("width").map(|e| e.map(|f: i64| f as u32))?;
     let legend = call.has_flag("legend");
     let steps = call.has_flag("steps");
     let bars = call.has_flag("bars");
@@ -86,8 +86,8 @@ fn parse_cli_opts(call: &EvaluatedCall) -> Result<CliOpts, LabeledError> {
     let title: Option<String> = call.get_flag("title")?;
 
     Ok(CliOpts {
-        max_y_op,
-        max_x_op,
+        height_op,
+        width_op,
         legend,
         steps,
         bars,
@@ -141,8 +141,8 @@ impl Plotter {
         plot_type: &str,
     ) -> Result<Value, LabeledError> {
         let CliOpts {
-            max_y_op,
-            max_x_op,
+            height_op,
+            width_op,
             legend,
             steps,
             bars,
@@ -151,8 +151,8 @@ impl Plotter {
             bins,
         } = parse_cli_opts(call)?;
 
-        let max_x = max_x_op.unwrap_or(200);
-        let max_y = max_y_op.unwrap_or(50);
+        let max_x = width_op.unwrap_or(200);
+        let max_y = height_op.unwrap_or(50);
 
         let values = input.as_list()?;
 
@@ -240,8 +240,8 @@ impl Plotter {
         plot_type: &str,
     ) -> Result<Value, LabeledError> {
         let CliOpts {
-            max_y_op,
-            max_x_op,
+            height_op,
+            width_op,
             legend,
             steps,
             bars,
@@ -250,8 +250,8 @@ impl Plotter {
             bins,
         } = parse_cli_opts(call)?;
 
-        let max_x = max_x_op.unwrap_or(200);
-        let max_y = max_y_op.unwrap_or(50);
+        let max_x = width_op.unwrap_or(200);
+        let max_y = height_op.unwrap_or(50);
 
         let values = input.as_list()?;
         if values.len() > 5 {
