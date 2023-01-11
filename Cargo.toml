@@ -6,7 +6,6 @@ edition = "2021"
 license = "MIT"
 name = "nu_plugin_plot"
 version = "0.74.0"
-license = "MIT"
 
 [dependencies]
 nu-plugin = { version = "0.74.0" }
