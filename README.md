@@ -80,6 +80,13 @@ let r2 = (seq 1 100 | each { random integer ..30})
 # up the number of bins
 [$r1 $r2] | hist -b --bins 50
 
+# If you've got R installed (& Rscript)
+# go crazy!
+# forget ggplot!
+let x = (Rscript -e "cat(dnorm(seq(-4, 4, length=100)))" | into string | split row ' ' | into decimal)
+let y = (Rscript -e "cat(dnorm(seq(-3, 6, length=100)))" | into string | split row ' ' | into decimal)
+
+[$x $y] | plot -bl -t "Two normal distributions"
 ```
 
 ## Features
