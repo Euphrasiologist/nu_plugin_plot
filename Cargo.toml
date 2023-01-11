@@ -1,11 +1,12 @@
 [package]
 authors = ["Max Brown"]
-description = "Plot graphs in nushell."
+description = "Plot graphs in nushell using numerical lists."
 repository = "https://github.com/euphrasiologist/nu_plugin_plot"
 edition = "2021"
 license = "MIT"
 name = "nu_plugin_plot"
-version = "0.73.0"
+version = "0.74.0"
+license = "MIT"
 
 [dependencies]
 nu-plugin = { version = "0.74.0" }
