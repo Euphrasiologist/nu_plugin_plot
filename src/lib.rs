@@ -233,7 +233,7 @@ impl Plotter {
                 bars,
                 points,
                 call,
-                &chart_data.unwrap(),
+                &chart_data?,
             )?)
             .to_string();
 
@@ -306,9 +306,9 @@ impl Plotter {
                 .collect();
 
             let min_max_x = {
-                let x: Vec<f32> = v.clone().unwrap().iter().map(|e| e.0).collect();
+                let x: Vec<f32> = v.clone()?.iter().map(|e| e.0).collect();
                 let y = if plot_type == "xyplot" {
-                    let temp: Vec<f32> = v.clone().unwrap().iter().map(|e| e.1).collect();
+                    let temp: Vec<f32> = v.clone()?.iter().map(|e| e.1).collect();
                     Some(min_max(&temp))
                 } else {
                     None
@@ -528,7 +528,7 @@ fn check_equality_of_list(
 
     if let Some(_len) = first_len_op {
         // *should* always index + unwrap without panicking...
-        let inner_type = l[0].as_list().unwrap()[0].get_type();
+        let inner_type = l[0].as_list()?[0].get_type();
         match inner_type {
             Type::Float | Type::Int => (),
             _ => {
