@@ -7,7 +7,7 @@
 //! - `xyplot` plots a 2-dimensional numeric list (nested list with length == 2)
 
 use nu_plugin::{EvaluatedCall, LabeledError, Plugin};
-use nu_protocol::{Category, Signature, SyntaxShape, Type, Value};
+use nu_protocol::{Category, PluginSignature, SyntaxShape, Type, Value};
 pub mod color_plot;
 
 use color_plot::drawille::PixelColor;
@@ -228,13 +228,7 @@ impl Plotter {
         };
 
         let mut chart = Chart::new(max_x, max_y, min_max_x.0, min_max_x.1)
-            .lineplot(&chart_shape(
-                steps,
-                bars,
-                points,
-                call,
-                &chart_data?,
-            )?)
+            .lineplot(&chart_shape(steps, bars, points, call, &chart_data?)?)
             .to_string();
 
         if let Some(t) = title {
@@ -546,10 +540,10 @@ fn check_equality_of_list(
 
 impl Plugin for Plotter {
     // Try and keep it one command with a few flags
-    fn signature(&self) -> Vec<Signature> {
+    fn signature(&self) -> Vec<PluginSignature> {
         vec![
             // plot
-            Signature::build("plot")
+            PluginSignature::build("plot")
                 .usage("Render an ASCII plot from a list of values.")
                 .named(
                     "width",
@@ -575,7 +569,7 @@ impl Plugin for Plotter {
                 .switch("points", "Change lines to points.", Some('p'))
                 .category(Category::Experimental),
             // histogram
-            Signature::build("hist")
+            PluginSignature::build("hist")
                 .usage("Render an ASCII histogram from a list of values.")
                 .named(
                     "width",
@@ -606,7 +600,7 @@ impl Plugin for Plotter {
                 .switch("steps", "Change lines to steps.", Some('s'))
                 .category(Category::Experimental),
             // plot
-            Signature::build("xyplot")
+            PluginSignature::build("xyplot")
                 .usage("Render an ASCII xy plot from a list of values.")
                 .named(
                     "width",
@@ -674,7 +668,7 @@ impl Plugin for Plotter {
                     },
                     Err(e) => return Err(LabeledError {
                         label: "Incorrect input type.".into(), 
-                        msg: format!("Input type is {}, but should be a List.", e), 
+                        msg: format!("Input type should be a list: {}.", e), 
                         span: Some(call.head)
                     }),
                 }
