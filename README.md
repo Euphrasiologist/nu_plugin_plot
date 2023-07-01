@@ -9,10 +9,12 @@ Not yet on crates.io, so you'll have to clone this repository. I assume you have
 ```console
 git clone https://github.com/Euphrasiologist/nu_plugin_plot
 cd nu_plugin_plot
-
+```
+```console
 cargo build --release
 register ./target/release/nu_plugin_plot
-
+```
+```console
 # test commands
 plot -h
 hist -h
@@ -27,7 +29,7 @@ xyplot -h
 Render an ASCII plot from a list of values.
 
 Usage:
-  > plot {flags} 
+  > plot {flags}
 
 Flags:
   -h, --help - Display the help message for this command
@@ -234,7 +236,6 @@ let y = (Rscript -e "cat(dnorm(seq(-3, 6, length=100)))" | into string | split r
 ```
 
 ## Features
-
 Plot:
 
 - [x] a single numeric list
