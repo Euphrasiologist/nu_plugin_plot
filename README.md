@@ -9,10 +9,12 @@ Not yet on crates.io, so you'll have to clone this repository. I assume you have
 ```console
 git clone https://github.com/Euphrasiologist/nu_plugin_plot
 cd nu_plugin_plot
-
+```
+```console
 cargo build --release
 register ./target/release/nu_plugin_plot
-
+```
+```console
 # test commands
 plot -h
 hist -h
@@ -27,7 +29,7 @@ xyplot -h
 Render an ASCII plot from a list of values.
 
 Usage:
-  > plot {flags} 
+  > plot {flags}
 
 Flags:
   -h, --help - Display the help message for this command
@@ -41,48 +43,192 @@ Flags:
 ```
 
 ## Examples
-
-```console
-## basic 'plot'
-
-# plot a single line
+in the following, we define a bunch of sine wave as follows
+```nushell
 let one = (seq 0.0 0.01 20.0 | math sin)
-$one | plot
-
-# plot two lines
 let two = (seq 1.0 0.01 21.0 | math sin)
-[$one $two] | plot
-
-# plot four lines with a legend and title
 let three = (seq 2.0 0.01 22.0 | math sin)
 let four = (seq 3.0 0.01 23.0 | math sin)
+```
 
+### Basic plots
+- plot a single line
+```nushell
+$one | plot
+```
+```
+⡁   ⢀⡴⠋⠉⠳⣄                      ⢀⡴⠋⠉⠳⣄                      ⢀⡴⠋⠉⠳⣄                      ⢀⡄ 1.0
+⠄  ⢠⠏    ⠈⢦                    ⢠⠏    ⠈⢦                    ⢠⠏    ⠘⢦                    ⣠⠏
+⠂ ⢠⠏      ⠈⢧                  ⢠⠏      ⠈⢧                  ⢠⠃      ⠈⢧                  ⢰⠃
+⡁⢀⠏        ⠈⣇                ⢠⠏        ⠈⣆                ⢠⠏        ⠈⣆                ⢠⠇
+⠄⡞          ⠘⡆              ⢀⡞          ⠘⡆              ⢀⡎          ⠘⡄              ⢀⡎
+⡾⠁           ⠸⡄             ⡼            ⠹⡀             ⡼            ⢹⡀             ⡜
+⡁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈⢳⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⣱⠋ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⢳⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⣸⠁⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⢻ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈⣸⠁⠈ ⠁⠈
+⠄              ⢧          ⢠⠇              ⠈⢧          ⢠⠃              ⠈⢇          ⢠⠃
+⠂              ⠈⣆        ⢀⡎                ⠘⣆        ⢀⠏                ⠘⣆        ⢠⠏
+⡁               ⠘⣆      ⢀⡞                  ⠘⣆      ⢀⡞                  ⠘⡄      ⢀⡞
+⠄                ⠘⣆    ⢀⡞                    ⠘⣆    ⢀⠞                    ⠙⣆    ⢠⠞
+⠂                 ⠈⠳⣄⣀⡴⠋                      ⠈⠳⣄⣀⡴⠋                      ⠈⠣⣄⣀⡴⠋           -1.0
+0.0                                                                                   2000.0
+```
+
+- plot two lines
+```nushell
+[$one $two] | plot
+```
+```
+⣡⠞⠉⠙⢦⡴⠋⠉⠳⣄                  ⣠⠞⠉⠙⢦⡴⠋⠉⠳⣄                  ⣠⠞⠉⠙⢦⡴⠋⠉⠳⣄                  ⣠⠞⠉⠙⢦⡄ 1.0
+⠅  ⢠⠏⠹⡄  ⠈⢦                ⡼⠁  ⢠⠏⠹⡄  ⠈⢦                ⡼⠁  ⢠⠏⠱⡄  ⠘⢦                ⡼⠁  ⣠⠏⠁
+⠂ ⢠⠏  ⠹⡄  ⠈⢧              ⡼⠁  ⢠⠏  ⠹⡄  ⠈⢧              ⡼⠁  ⢠⠃  ⠹⡄  ⠈⢧              ⡜   ⢰⠃
+⡁⢀⠏    ⠹⡀  ⠈⣇            ⡸⠁  ⢠⠏    ⠹⡀  ⠈⣆            ⡼⠁  ⢠⠏    ⢹⡀  ⠈⣆            ⡼⠁  ⢠⠇
+⠄⡞      ⢳⡀  ⠘⡆          ⢰⠃  ⢀⡞      ⢳   ⠘⡆          ⣰⠃  ⢀⡎      ⢳   ⠘⡄          ⣰⠃  ⢀⡎
+⡾⠁       ⢧   ⠸⡄        ⢠⠏   ⡼        ⢧   ⠹⡀        ⢠⠇   ⡼       ⠈⢇   ⢹⡀        ⢠⠇   ⡜
+⡁⠈ ⠁⠈ ⠁⠈ ⠙⣎ ⠁⠈⢳⠁⠈ ⠁⠈ ⠁⠈⡞⠁⠈ ⣱⠋ ⠁⠈ ⠁⠈ ⠁⠘⡆⠁⠈ ⢳⠈ ⠁⠈ ⠁⠈⢀⡟⠈ ⠁⣸⠁⠁⠈ ⠁⠈ ⠁⠈⠘⡇⠈ ⠁⢻ ⠁⠈ ⠁⠈ ⢁⡎ ⠁⠈⣸⠁⠈ ⠁⠈
+⠄         ⠸⡄   ⢧      ⡼   ⢠⠇          ⠸⡄  ⠈⢧      ⡼   ⢠⠃          ⠹⡄  ⠈⢇      ⡼   ⢠⠃
+⠂          ⢹⡀  ⠈⣆    ⣰⠃  ⢀⡎            ⢳⡀  ⠘⣆    ⣰⠁  ⢀⠏            ⢳⡀  ⠘⣆    ⣸⠁  ⢠⠏
+⡁           ⢳⡀  ⠘⣆  ⣰⠃  ⢀⡞              ⢳⡀  ⠘⣆  ⣰⠃  ⢀⡞              ⢳⡀  ⠘⡄  ⣰⠃  ⢀⡞
+⠄            ⠳⡀  ⠘⣆⣰⠃  ⢀⡞                ⢳⡀  ⠘⣆⣰⠃  ⢀⠞                ⢳⡀  ⠙⣆⡴⠃  ⢠⠞
+⠂             ⠙⢦⣀⣠⠞⠳⣄⣀⡴⠋                  ⠙⢦⣀⣠⠞⠳⣄⣀⡴⠋                  ⠙⢦⣀⣠⠞⠣⣄⣀⡴⠋           -1.0
+0.0                                                                                   2000.0
+```
+
+- plot four lines with a legend and title
+```nushell
 [$one $two $three $four] | plot -l -t "Four sine lines!"
+```
+```
+Four sine lines!
+⣥⠞⠉⠙⢦⡴⠋⠉⠳⣄         ⣠⠞⠉⠙⢦⡴⠋⠉⠳⣤⠞⠉⠙⢦⡴⠋⠉⠳⣄         ⣠⠞⠉⠙⢦⡴⠋⠉⠳⣤⠞⠉⠙⢦⡴⠋⠉⠳⣄         ⣠⠞⠉⠙⢦⡴⠋⠉⠳⣤⠞⠉⠙⢦⡄ 1.0
+⠍⢧ ⢠⠏⠹⡄  ⠈⢦       ⡴⠃  ⢠⠎⠹⡄ ⡼⠉⢧ ⢠⠏⠹⡄  ⠈⢦       ⡴⠁  ⢠⠏⠹⡄ ⡼⠉⢧ ⢠⠏⠱⡄  ⠘⢦       ⡴⠁  ⢠⠏⠹⡄ ⡼⠉⢦ ⣠⠏⠁
+⠂ ⢣⠏  ⠹⡄  ⠈⢧     ⡼⠁  ⢠⠏  ⠘⡼⠁ ⠈⢧⠏  ⠹⡄  ⠈⢧     ⡼⠁  ⢠⠏  ⠹⡼⠁ ⠈⢧⠃  ⠹⡄  ⠈⢧     ⡼⠁  ⢠⠏  ⠹⡜  ⠈⢷⠃
+⡁⢀⠏⢧   ⠹⡀  ⠈⣇   ⣰⠃  ⢀⡎   ⡸⠹⡄ ⢠⠏⢧   ⠹⡀  ⠈⣆   ⣰⠁  ⢀⠏   ⡼⠹⡄ ⢠⠏⢇   ⢹⡀  ⠈⣆   ⣸⠁  ⢀⠏   ⡼⠹⡀ ⢠⠏⣇
+⠄⡞ ⠘⣆   ⢳⡀  ⠘⡆ ⢠⠇   ⡞   ⢰⠃ ⢱⣀⡞ ⠘⣆   ⢳   ⠘⡆ ⢰⠃   ⡞   ⣰⠃ ⢳⣀⡎ ⠘⡆   ⢳   ⠘⡄ ⢰⠃   ⡞   ⣰⠃ ⢳⢀⡎ ⠘⡆
+⣿⠁  ⠸⡄   ⢧   ⠸⣄⡏   ⡸⠁  ⢠⠏   ⣿   ⠸⡄   ⢧   ⠹⣀⠏   ⡼   ⢠⠇   ⣿   ⠸⡄  ⠈⢇   ⢹⣀⠏   ⡼   ⢠⠇   ⣿   ⠹⡀
+⡉⣏ ⠁⠈⢹⡁⠈ ⠙⣎ ⠁⠈⣿⠁⠈ ⢱⠋ ⠁⠈⡞⠁⠈ ⣱⠋⣆⠁⠈ ⢳⡈ ⠁⠘⡆⠁⠈ ⣿⠈ ⠁⢸⠃⠁⠈⢀⡟⠈ ⠁⣸⠉⣇⠈ ⠁⢻ ⠁⠈⠘⡇⠈ ⠁⣿ ⠁⠈⣰⠃⠈ ⢁⡎ ⠁⠈⣸⠙⣎ ⠁⠈⠁
+⠄⠘⡄   ⢧   ⠸⡄ ⣸⠁⢧ ⢀⠏   ⡼   ⢠⠇ ⠘⡄   ⢧   ⠸⡄ ⡸⠉⢧ ⢠⠇   ⡼   ⢠⠃ ⠸⡄   ⢧   ⠹⡄ ⡼⠈⢇ ⢠⠇   ⡼   ⢠⠃ ⠸⡄
+⠂ ⠹⡄  ⠈⢇   ⢹⣰⠃ ⠈⣆⡞   ⣰⠃  ⢀⡎   ⠹⡀  ⠈⣇   ⢳⣰⠃ ⠘⣆⡞   ⣰⠁  ⢀⠏   ⢹⡀  ⠈⣆   ⢳⣰⠃ ⠘⣆⡏   ⣸⠁  ⢠⠏   ⢱⡀
+⡁  ⢳⡀  ⠘⣆  ⢠⢳⡀  ⡞⣆  ⣰⠃  ⢀⡞     ⢳⡀  ⠘⣆  ⣰⢳⡀ ⢀⡞⣆  ⣰⠃  ⢀⡞     ⢳⡀  ⠘⣆  ⣰⢳⡀ ⢀⡞⡄  ⣰⠃  ⢀⡞     ⢳⡀
+⠄   ⠱⡄  ⠘⢦⣠⠋ ⠳⣀⡞ ⠘⣆⣰⠃  ⢀⡞       ⠳⡄  ⠘⣆⣰⠃ ⢳⣀⡞ ⠘⣆⣰⠃  ⢀⠞       ⢳⡀  ⠘⣆⣰⠃ ⢳⣀⡞ ⠙⣆⡴⠃  ⢠⠞       ⢳⡀
+⠂    ⠙⢦⣀⣠⠜⠳⣄⣀⡴⠛⢦⣀⣠⠞⠳⣄⣀⡴⠋         ⠙⢦⣀⣠⠞⠳⣄⣀⡴⠛⢦⣀⣠⠞⠳⣄⣀⡴⠋         ⠙⢦⣀⣠⠞⠳⣄⣀⡴⠛⢦⣀⣠⠞⠣⣄⣀⡴⠋           -1.0
+0.0                                                                                   2000.0
+Line 1: --- Line 2: --- Line 3: --- Line 4: ---
+```
 
-# bivariate 'xyplot'
-# input must be a two element nested list
+### Bivariate 'xyplot'
+> **Note**  
+> input must be a two element nested list
 
-# make a nice ellipse
+- make a nice ellipse
+```nushell
 [$one $two] | xyplot
+```
+```
+                                            ⡁⢀⣀⣀⣀⡤⠤⠤⠤⠤⠖⠒⠒⠒⠒⠒⠚⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠒⠒⠒⠒⠦⠤⠤⣀⣀      1.0
+                                 ⢀⣀⣀⡤⠤⠤⠖⠒⠒⠋⠉⠍⠁                                      ⠈⠉⠓⠦⣀
+                        ⢀⣀⣠⠤⠤⠒⠒⠋⠉⠉          ⠂                                           ⠘⡆
+                 ⢀⣀⡤⠤⠒⠒⠉⠉                   ⡁                                           ⣰⠃
+            ⣀⡤⠴⠒⠋⠉                          ⠄                                        ⢀⡤⠞⠁
+       ⣀⡤⠔⠚⠉                                ⠂                                     ⣀⡤⠖⠉
+⠁⠈ ⢁⣨⠖⠋⠉ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈⡁⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈ ⠁⠈⢀⣡⠬⠖⠋⠉ ⠁⠈ ⠁⠈
+ ⣠⠖⠋                                        ⠄                          ⢀⣀⡤⠴⠒⠋⠉
+⡼⠁                                          ⠂                   ⢀⣀⣠⠤⠖⠒⠋⠉
+⢧                                           ⡁          ⢀⣀⣀⡤⠤⠔⠒⠚⠉⠉
+⠈⠑⠦⣄⣀                                       ⣄⣀⣀⡤⠤⠤⠖⠒⠒⠋⠉⠉
+    ⠈⠉⠓⠒⠒⠦⠤⠤⠤⢤⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀⣠⠤⠤⠤⠤⠤⠤⠔⠒⠒⠒⠒⠉⠉⠉⠉⠂                                              -1.0
+-1.0                                                                                  1.0
+```
 
-# bivariate line plot
-# diagonal dots!
+- bivariate line plot and diagonal dots!
+```nushell
 [(seq 1 100) (seq 1 100 | reverse)] | xyplot -p
+```
+```
+⠁⠁⠒⠠⠠⢀⢀                                                                                    100.0
+       ⠁⠁⠂⠂⠤⢀⢀
+              ⠈⠈⠂⠂⠂⠄⢄⢀
+                      ⠈⠈⠐⠂⠄⠄⡀⡀
+                             ⠈⠈⠐⠐⠠⠄⡀⡀⡀
+                                      ⠉⠐⠐⠠⠠⡀⡀
+                                             ⠁⠑⠐⠠⠠⢀⡀
+                                                    ⠁⠁⠁⠒⠠⠠⢀⢀
+                                                            ⠁⠁⠂⠂⠤⢀⢀
+                                                                   ⠈⠈⠂⠂⠄⠄⢄⢀
+                                                                           ⠈⠈⠐⠂⠄⠄⡀⡀
+                                                                                  ⠈⠈⠐⠐⠠⠄⡀⡀ 1.0
+1.0                                                                                   100.0
+```
 
-# plot histograms
-
-# compare two uniform distributions
+### Plot histograms
+in this section, we define the following lists
+```nushell
 let r1 = (seq 1 100 | each { random integer ..30})
 let r2 = (seq 1 100 | each { random integer ..30})
+```
 
-# -b for bars, otherwise you get lines by default
+- compare two uniform distributions
+```nushell
+[$r1 $r2] | hist
+```
+```
+⡁                                                                     ⢰⢇                   12.0
+⠄                                                                     ⡎⠘⡄
+⠂      ⢀⠔⡇                                          ⢀⢾               ⢰⠁ ⠸⡀
+⡁     ⡠⠊ ⠸⡀                                         ⡜⠈⡆              ⡜   ⢱
+⠍⠑⠢⢄⣀⠔⠁   ⢇                                        ⡸  ⢱             ⢠⠃    ⢣
+⠂   ⠈     ⠘⡄     ⡔⢇      ⢀⠾⡀      ⢀⡾⡄      ⢠⠚⢄    ⢰⠁⡠⠚⡌⡆      ⢀     ⡜ ⡔⠉⠑⠒⠬⢆⣀
+⡁          ⢣   ⢀⠜ ⡈⢆     ⡎ ⢣      ⡼ ⢫⢆    ⡠⠃⢀⣀⠱⡀ ⢠⢃⠎  ⠈⢧     ⢠⠋⠢⡀  ⢀⠇⡜       ⠉⠒⠤⣀⣀⣀⣀⣀
+⠕⢄         ⠈⡆ ⢀⠎⢠⠊⠑⢌⢆   ⡜  ⠈⣇    ⣸⠃  ⢏⢢  ⡰⠁⡰⠁ ⠉⠚⠦⡞⠁    ⠘⣦    ⡎⢀⣀⠑⢄ ⡸⡜            ⠈⠑⠢⢄
+⠂⠈⠢⡀        ⢱⢠⠃⡔⠁  ⠈⠪⣆ ⡸    ⠸⡆  ⢰⡏   ⠈⡆⠣⡜ ⡰⠁            ⢣⠣⣀⡠⡜⠊⠁ ⠉⠚⠦⡟
+⡁  ⠑⢄⣀⣀⣀⣀⣀⡠⠔⠊⢧⠊      ⠙⢶⠁     ⢻⡄⢠⡻     ⠘⡄ ⡜              ⠸⡀ ⢰⠁
+⠄                            ⠈⡷⣮⠃      ⠱⡜                ⢇⢠⠃
+⡂⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡸⣎ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡸⣎ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀ ⡀⢀  0.0
+0.0                                                                                   30.0
+```
+
+- `-b` for bars
+```nushell
 [$r1 $r2] | hist -b
-# up the number of bins
-[$r1 $r2] | hist -b --bins 50
+```
+```
+⡁                                                                  ⡏⠉⠉⠉⡇                   12.0
+⠄                                                                  ⡇   ⡇
+⠂   ⢸⠉⠉⠉⠉⡇                                       ⡏⠉⠉⠉⢹             ⡇   ⡇
+⡁   ⢸    ⡇                                       ⡇   ⢸             ⡇   ⡇
+⡇   ⢸    ⡇                                       ⡇   ⢸             ⡇   ⡇
+⡏⠉⠉⠉⢹    ⡇   ⢸⠉⠉⠉⠉⡇   ⢸⠉⠉⠉⢹    ⡏⠉⠉⠉⢹    ⡏⠉⠉⠉⢹    ⡏⠉⠉⠉⢹    ⣀⣀⣀⣀⣀    ⡏⠉⠉⠉⣇⣀⣀⣀⣀
+⡇   ⢸    ⡇   ⢸⣀⣀⣀⣀⡇   ⢸   ⢸    ⡇   ⢸    ⣇⣀⣀⣀⣸    ⡇   ⢸    ⡇   ⢸    ⡇   ⡇   ⢸⣀⣀⣀⣀⣀⣀⣀⣀⣀
+⡇   ⢸    ⡇   ⢸    ⡇   ⢸   ⢸    ⡇   ⢸    ⡇   ⢸⣀⣀⣀⣀⡇   ⢸    ⣇⣀⣀⣀⣸    ⡇   ⡇   ⢸    ⣇⣀⣀⣀⣸
+⡇   ⢸    ⣇⣀⣀⣀⣸    ⡇   ⢸   ⢸    ⡇   ⢸⣀⣀⣀⣀⡇   ⢸    ⡇   ⢸⣀⣀⣀⣀⡇   ⢸⣀⣀⣀⣀⡇   ⡇   ⢸    ⡇   ⢸
+⣇⣀⣀⣀⣸⣀⣀⣀⣀⣇⣀⣀⣀⣸    ⣇⣀⣀⣀⣸   ⢸    ⡇   ⢸    ⡇   ⢸    ⡇   ⢸    ⡇   ⢸    ⡇   ⡇   ⢸    ⡇   ⢸
+⡇   ⢸    ⡇   ⢸    ⡇   ⢸   ⢸⣀⣀⣀⣀⡇   ⢸⣀⣀⣀⣀⡇   ⢸    ⡇   ⢸    ⡇   ⢸    ⡇   ⡇   ⢸    ⡇   ⢸
+⡇⢀ ⡀⢸ ⡀⢀ ⡇⢀ ⡀⢸ ⡀⢀ ⡇⢀ ⡀⢸ ⡀⢀⢸⣀⣀⣀⣀⣇ ⡀⢀⢸⡀⢀ ⡀⣇ ⡀⢀⢸⡀⢀ ⡀⣇ ⡀⢀⢸⣀⣀⣀⣀⣇ ⡀⢀⢸⡀⢀ ⡀⣇ ⡀⢀⡇⡀⢀ ⣸⢀ ⡀⢀⡇⡀⢀ ⣸⢀ ⡀⢀  0.0
+0.0                                                                                   30.0
+```
 
-# If you've got R installed (& Rscript)
-# go crazy!
-# forget ggplot!
+- up the number of bins
+```nushell
+[$r1 $r2] | hist -b --bins 50
+```
+```
+⡁                                                                      ⡏⠉⡇                 8.0
+⠄  ⢠⠤⢤ ⡤⠤⡄                                                             ⡇ ⡇
+⠂  ⢸ ⢸ ⡇ ⡇                                                             ⡇ ⡇
+⡁  ⢸ ⢸ ⡇ ⡇                                        ⡏⢹                   ⡇ ⡇ ⡏⢹
+⡄  ⢸ ⢸ ⡇ ⡇                ⢠⠤⢤     ⡤⢤⠤⢤            ⡇⢸                   ⡧⠤⡇ ⡇⢸      ⢠⠤⢤
+⡇  ⢸ ⢸ ⡇ ⡇      ⣀⣀⣀⣀   ⣀⣀⡀⢸ ⢸     ⡇⢸ ⢸      ⢀⣀⣀ ⣀⣀⡇⢸ ⢀⣀⡀             ⢀⣀⡇ ⡇ ⡇⢸   ⣀⣀⡀⢸⣀⣸
+⡇  ⢸ ⢸ ⡇ ⡇      ⡇ ⡇⢸   ⡇ ⡇⢸ ⢸     ⡇⢸ ⢸      ⢸ ⢸ ⡇ ⡇⢸ ⢸ ⡇             ⢸ ⡇ ⡇ ⡇⢸   ⡇ ⡇⢸ ⢸
+⡗⠒⡆⢸ ⢸ ⡇ ⡗⢲ ⢰⠒⡆ ⡇ ⡗⢺   ⡇ ⡇⢸⠒⢺     ⡇⢸ ⢸ ⡖⠒⡖⢲ ⢸⠒⢺ ⡇ ⡗⢺ ⢸ ⡇ ⡖⢲ ⢰⠒⢲⠒⡆ ⡖⢲ ⢸ ⡇ ⡇ ⡇⢸   ⡗⠒⡇⢸ ⢸⠒⡆
+⡇ ⡇⢸⣀⣸ ⡇ ⣇⣸ ⢸⣀⡇ ⡇ ⡇⢸ ⢀⣀⣇⣀⡇⢸ ⢸     ⣇⣸⣀⣸ ⡇ ⣇⣸ ⢸ ⢸ ⡇ ⡇⢸ ⢸ ⡇ ⡇⢸ ⢸ ⢸ ⡇ ⡇⢸ ⢸⣀⡇ ⡇ ⡇⢸ ⢀⣀⡇ ⡇⢸ ⢸ ⡇
+⡇ ⡇⢸ ⢸ ⡇ ⡇⢸ ⢸ ⡇ ⡇ ⡇⢸ ⢸ ⡇ ⡇⢸ ⢸     ⡇⢸ ⢸ ⡇ ⡇⢸ ⢸ ⢸ ⡇ ⡇⢸ ⢸ ⡇ ⡇⢸ ⢸ ⢸ ⡇ ⡇⢸ ⢸ ⡇ ⡇ ⡇⢸ ⢸ ⡇ ⡇⢸ ⢸ ⡇
+⡇ ⡇⢸ ⢸ ⡇ ⡇⢸ ⢸ ⡇ ⡗⠒⡇⢸ ⢸ ⡇ ⡇⢸ ⢸ ⢰⠒⡆ ⡇⢸ ⢸ ⡗⠒⡇⢸ ⢸ ⢸ ⡇ ⡇⢸ ⢸ ⡇ ⡇⢸ ⢸ ⢸⠒⡇ ⡇⢸ ⢸ ⡇ ⡇ ⡇⢸ ⢸⠒⡇ ⡇⢸ ⢸ ⡇
+⡇⢀⣇⣸⢀⢸⣀⣇⣀⡇⢸⣀⣸⢀⣇⣀⣇ ⡇⢸⣀⣸⢀⡇⡀⣇⣸⡀⢸⣀⣸⣀⣇⣀⣇⢸⡀⢸⣀⡇⢀⡇⣸⣀⣸⡀⢸⣀⡇⢀⡇⣸⣀⣸⡀⣇⣀⣇⣸⣀⣸⢀⢸⡀⣇⣀⡇⢸⣀⣸⢀⡇⡀⣇⣀⡇⢸⣀⣸⢀⡇⡀⣇⣸⡀⢸ ⡇⢀  0.0
+0.0                                                                                   30.0
+```
+
+### If you've got R installed (& Rscript)
+go crazy!
+forget `ggplot`!
+```nushell
 let x = (Rscript -e "cat(dnorm(seq(-4, 4, length=100)))" | into string | split row ' ' | into decimal)
 let y = (Rscript -e "cat(dnorm(seq(-3, 6, length=100)))" | into string | split row ' ' | into decimal)
 
@@ -90,7 +236,6 @@ let y = (Rscript -e "cat(dnorm(seq(-3, 6, length=100)))" | into string | split r
 ```
 
 ## Features
-
 Plot:
 
 - [x] a single numeric list
