@@ -184,7 +184,7 @@ impl Plotter {
             .iter()
             .enumerate()
             .map(|(i, e)| match e {
-                Value::Int { val: _, span: _ } => Ok((i as f32, e.as_integer()? as f32)),
+                Value::Int { val: _, span: _ } => Ok((i as f32, e.as_int()? as f32)),
                 Value::Float { val: _, span: _ } => Ok((i as f32, e.as_f64()? as f32)),
                 e => Err(LabeledError {
                     label: "Incorrect type supplied.".into(),
@@ -289,7 +289,7 @@ impl Plotter {
                 .iter()
                 .enumerate()
                 .map(|(i, e)| match e {
-                    Value::Int { val: _, span: _ } => Ok((i as f32, e.as_integer()? as f32)),
+                    Value::Int { val: _, span: _ } => Ok((i as f32, e.as_int()? as f32)),
                     Value::Float { val: _, span: _ } => Ok((i as f32, e.as_f64()? as f32)),
                     e => Err(LabeledError {
                         label: "Incorrect type supplied.".into(),
@@ -642,8 +642,8 @@ impl Plugin for Plotter {
                         // so we have a list. what's in it? we need to check each inner value
                         if list.is_empty() {
                             return Err(LabeledError {
-                                label: "No elements in the list.".into(), 
-                                msg: "Can't plot a zero element list.".into(), 
+                                label: "No elements in the list.".into(),
+                                msg: "Can't plot a zero element list.".into(),
                                 span: Some(call.head)
                             })
                         }
@@ -659,16 +659,16 @@ impl Plugin for Plotter {
                             match value_type {
                                 Type::Float | Type::Int => self.plot(call, input, name),
                                 e =>  Err(LabeledError {
-                                    label: "Incorrect List type.".into(), 
-                                    msg: format!("List type is {}, but should be float or int.", e), 
+                                    label: "Incorrect List type.".into(),
+                                    msg: format!("List type is {}, but should be float or int.", e),
                                     span: Some(call.head)
                                 })
                             }
                         }
                     },
                     Err(e) => return Err(LabeledError {
-                        label: "Incorrect input type.".into(), 
-                        msg: format!("Input type should be a list: {}.", e), 
+                        label: "Incorrect input type.".into(),
+                        msg: format!("Input type should be a list: {}.", e),
                         span: Some(call.head)
                     }),
                 }
