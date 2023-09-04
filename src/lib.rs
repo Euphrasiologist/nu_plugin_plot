@@ -184,8 +184,8 @@ impl Plotter {
             .iter()
             .enumerate()
             .map(|(i, e)| match e {
-                Value::Int { val: _, span: _ } => Ok((i as f32, e.as_int()? as f32)),
-                Value::Float { val: _, span: _ } => Ok((i as f32, e.as_f64()? as f32)),
+                Value::Int { val: _, .. } => Ok((i as f32, e.as_int()? as f32)),
+                Value::Float { val: _, .. } => Ok((i as f32, e.as_f64()? as f32)),
                 e => Err(LabeledError {
                     label: "Incorrect type supplied.".into(),
                     msg: format!("Got {}, need integer or float.", e.get_type()),
@@ -240,10 +240,7 @@ impl Plotter {
             chart += &format!("Line 1: {}", "---".white());
         }
 
-        Ok(Value::String {
-            val: chart,
-            span: call.head,
-        })
+        Ok(Value::string(chart, call.head))
     }
 
     /// Plot a nested list of numbers.
@@ -289,8 +286,8 @@ impl Plotter {
                 .iter()
                 .enumerate()
                 .map(|(i, e)| match e {
-                    Value::Int { val: _, span: _ } => Ok((i as f32, e.as_int()? as f32)),
-                    Value::Float { val: _, span: _ } => Ok((i as f32, e.as_f64()? as f32)),
+                    Value::Int { val: _, .. } => Ok((i as f32, e.as_int()? as f32)),
+                    Value::Float { val: _, .. } => Ok((i as f32, e.as_f64()? as f32)),
                     e => Err(LabeledError {
                         label: "Incorrect type supplied.".into(),
                         msg: format!("Got {}, need integer or float.", e.get_type()),
@@ -463,10 +460,7 @@ impl Plotter {
             }
         }
 
-        Ok(Value::String {
-            val: final_chart,
-            span: call.head,
-        })
+        Ok(Value::string(final_chart, call.head))
     }
 }
 
