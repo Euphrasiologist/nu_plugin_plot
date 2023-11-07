@@ -184,8 +184,8 @@ impl Plotter {
             .iter()
             .enumerate()
             .map(|(i, e)| match e {
-                Value::Int { val: _, .. } => Ok((i as f32, e.as_int()? as f32)),
-                Value::Float { val: _, .. } => Ok((i as f32, e.as_f64()? as f32)),
+                Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
+                Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
                 e => Err(LabeledError {
                     label: "Incorrect type supplied.".into(),
                     msg: format!("Got {}, need integer or float.", e.get_type()),
@@ -286,8 +286,8 @@ impl Plotter {
                 .iter()
                 .enumerate()
                 .map(|(i, e)| match e {
-                    Value::Int { val: _, .. } => Ok((i as f32, e.as_int()? as f32)),
-                    Value::Float { val: _, .. } => Ok((i as f32, e.as_f64()? as f32)),
+                    Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
+                    Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
                     e => Err(LabeledError {
                         label: "Incorrect type supplied.".into(),
                         msg: format!("Got {}, need integer or float.", e.get_type()),
