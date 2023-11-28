@@ -161,8 +161,8 @@ Line 1: --- Line 2: --- Line 3: --- Line 4: ---
 ### Plot histograms
 in this section, we define the following lists
 ```nushell
-let r1 = (seq 1 100 | each { random integer ..30})
-let r2 = (seq 1 100 | each { random integer ..30})
+let r1 = (seq 1 100 | each { random int ..30})
+let r2 = (seq 1 100 | each { random int ..30})
 ```
 
 - compare two uniform distributions
