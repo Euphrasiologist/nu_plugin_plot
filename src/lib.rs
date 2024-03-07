@@ -102,10 +102,10 @@ fn parse_cli_opts(call: &EvaluatedCall) -> Result<CliOpts, LabeledError> {
         width = width_op;
     }
 
-    let legend = call.has_flag("legend");
-    let steps = call.has_flag("steps");
-    let bars = call.has_flag("bars");
-    let points = call.has_flag("points");
+    let legend = call.has_flag("legend")?;
+    let steps = call.has_flag("steps")?;
+    let bars = call.has_flag("bars")?;
+    let points = call.has_flag("points")?;
     let bins: Option<u32> = call.get_flag("bins").map(|e| e.map(|f: i64| f as u32))?;
     let title: Option<String> = call.get_flag("title")?;
 
@@ -157,6 +157,22 @@ fn min_max(series: &[f32]) -> (f32, f32) {
 }
 
 impl Plotter {
+    /// The configuration
+    pub fn config(
+        &self,
+        config: &Option<Value>,
+        call: &EvaluatedCall,
+    ) -> Result<Value, LabeledError> {
+        match config {
+            Some(config) => Ok(config.clone()),
+            None => Err(LabeledError {
+                label: "No config sent".into(),
+                msg: "Configuration for this plugin was not found in `$env.config.plugins.plot`"
+                    .into(),
+                span: Some(call.head),
+            }),
+        }
+    }
     /// Plot a single list of numbers.
     fn plot(
         &self,
@@ -619,12 +635,19 @@ impl Plugin for Plotter {
                 .switch("steps", "Change lines to steps.", Some('s'))
                 .switch("points", "Change lines to points.", Some('p'))
                 .category(Category::Experimental),
+            PluginSignature::build("plot-config")
+                .usage("Show plugin configuration")
+                .extra_usage("The configuration is set under $env.config.plugins.plot")
+                .category(Category::Experimental)
+                .search_terms(vec!["plot".into(), "configuration".into()])
+                .input_output_type(Type::Nothing, Type::Table(vec![])),
         ]
     }
 
     fn run(
         &mut self,
         name: &str,
+        config: &Option<Value>,
         call: &EvaluatedCall,
         input: &Value,
     ) -> Result<Value, LabeledError> {
@@ -660,12 +683,15 @@ impl Plugin for Plotter {
                             }
                         }
                     },
-                    Err(e) => return Err(LabeledError {
+                    Err(e) => Err(LabeledError {
                         label: "Incorrect input type.".into(),
                         msg: format!("Input type should be a list: {}.", e),
                         span: Some(call.head)
                     }),
                 }
+            }
+            "plot-config" => {
+                self.config(config, call)
             }
             _ => Err(LabeledError {
                 label: "Plugin call with wrong name signature".into(),
