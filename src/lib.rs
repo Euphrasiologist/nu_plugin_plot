@@ -114,6 +114,22 @@ fn chart_shape<'a>(
     }
 }
 
+/// Check the chart shape is Okay. If not returns an error.
+fn check_chart_shape<'a>(
+    steps: bool,
+    bars: bool,
+    points: bool,
+    call: &EvaluatedCall,
+) -> Result<(), LabeledError> {
+    match (steps, bars, points) {
+        (true, false, false) => Ok(()),
+        (false, true, false) => Ok(()),
+        (false, false, true) => Ok(()),
+        (false, false, false) => Ok(()),
+        _ => Err(LabeledError::new("Shape must be either steps or bars or points, not more than one. Check your flags!").with_label("Chart shape error", call.head)),
+    }
+}
+
 /// Return the minimum and the maximum of a slice of `f32`.
 fn min_max(series: &[f32]) -> (f32, f32) {
     let min = series
@@ -264,7 +280,7 @@ impl Plotter for CommandPlot {
         Ok(Value::string(chart, call.head))
     }
 
-    fn plot_nested(
+    fn plot_nested<'a>(
         &self,
         call: &EvaluatedCall,
         input: &Value,
@@ -312,94 +328,27 @@ impl Plotter for CommandPlot {
             data.push((min_max_x, v?));
         }
 
-        let (min, max) = {
-            // only interested in the first list
-            let min_all: Vec<f32> = data.iter().map(|((e, _), _)| e.0).collect();
-            let max_all: Vec<f32> = data.iter().map(|((e, _), _)| e.1).collect();
+        let min_all: Vec<f32> = data.iter().map(|((e, _), _)| e.0).collect();
+        let max_all: Vec<f32> = data.iter().map(|((e, _), _)| e.1).collect();
 
-            let min = min_all.iter().fold(f32::INFINITY, |a, &b| a.min(b));
-            let max = max_all.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
-
-            (min, *max)
-        };
+        let min = min_all.iter().fold(f32::INFINITY, |a, &b| a.min(b));
+        let max = *max_all.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
 
         // copying data structure again here but wanted to be explicit.
         let chart_data: Vec<Vec<(f32, f32)>> = data.iter().map(|(_, e)| e.clone()).collect();
 
-        let mut chart = Chart::new(max_x, max_y, min, max);
-
-        let charts = match chart_data.len() {
-            // this is xyplot
-            1 => chart
-                .lineplot(&chart_shape(steps, bars, points, call, &chart_data[0])?)
-                .to_string(),
-            // this is plot/hist
-            2 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .to_string(),
-            3 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .to_string(),
-            4 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[3])?,
-                    COLORS[3],
-                )
-                .to_string(),
-            5 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[3])?,
-                    COLORS[3],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[4])?,
-                    COLORS[4],
-                )
-                .to_string(),
-            _ => unreachable!(),
-        };
+        // let shapes = chart_data.into_iter().map(|data| chart_shape(steps, bars, points, call, &data));
+        check_chart_shape(steps, bars, points, call)?;
+        let shapes: Vec<Shape> = (&chart_data)
+            .iter()
+            .map(|data| chart_shape(steps, bars, points, call, data).unwrap())
+            .collect();
+        let charts = (&shapes).iter()
+            .enumerate()
+            .fold(&mut Chart::new(max_x, max_y, min, max), |chart, (i, shape)| {
+                chart.linecolorplot(shape, COLORS[i])
+            })
+            .to_string();
 
         let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
 
@@ -521,10 +470,6 @@ impl Plotter for CommandHist {
             })
             .collect();
 
-        let mut min_max_x = {
-            let x: Vec<f32> = v.clone().unwrap().iter().map(|e| e.0).collect();
-            min_max(&x)
-        };
         let (min, max) = min_max(
             &v.clone()
                 .unwrap()
@@ -538,7 +483,7 @@ impl Plotter for CommandHist {
             max,
             bins.map(|e| e as usize).unwrap_or(20),
         );
-        min_max_x = (min, max);
+        let min_max_x = (min, max);
 
 
         let mut chart = Chart::new(max_x, max_y, min_max_x.0, min_max_x.1)
@@ -603,17 +548,6 @@ impl Plotter for CommandHist {
             data.push((min_max_x, v?));
         }
 
-        let (mut min, mut max) = {
-            // only interested in the first list
-            let min_all: Vec<f32> = data.iter().map(|((e, _), _)| e.0).collect();
-            let max_all: Vec<f32> = data.iter().map(|((e, _), _)| e.1).collect();
-
-            let min = min_all.iter().fold(f32::INFINITY, |a, &b| a.min(b));
-            let max = max_all.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
-
-            (min, *max)
-        };
-
         // copying data structure again here but wanted to be explicit.
         let mut mins = 0.0;
         let mut maxs = 0.0;
@@ -632,90 +566,24 @@ impl Plotter for CommandHist {
                 }
             }
         }
+        let (min, max) = (mins, maxs);
 
         let hist_data: Vec<Vec<(f32, f32)>> = data
             .iter()
             .map(|(_, e)| histogram(e, mins, maxs, bins.map(|e| e as usize).unwrap_or(20)))
             .collect();
 
-        (min, max) = (mins, maxs);
-
-        let chart_data = hist_data;
-
-        let mut chart = Chart::new(max_x, max_y, min, max);
-
-        let charts = match chart_data.len() {
-            // this is xyplot
-            1 => chart
-                .lineplot(&chart_shape(steps, bars, points, call, &chart_data[0])?)
-                .to_string(),
-            // this is plot/hist
-            2 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .to_string(),
-            3 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .to_string(),
-            4 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[3])?,
-                    COLORS[3],
-                )
-                .to_string(),
-            5 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[3])?,
-                    COLORS[3],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[4])?,
-                    COLORS[4],
-                )
-                .to_string(),
-            _ => unreachable!(),
-        };
+        check_chart_shape(steps, bars, points, call)?;
+        let shapes: Vec<Shape> = (&hist_data)
+            .iter()
+            .map(|data| chart_shape(steps, bars, points, call, data).unwrap())
+            .collect();
+        let charts = (&shapes).iter()
+            .enumerate()
+            .fold(&mut Chart::new(max_x, max_y, min, max), |chart, (i, shape)| {
+                chart.linecolorplot(shape, COLORS[i])
+            })
+            .to_string();
 
         let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
 
@@ -813,18 +681,8 @@ impl Plotter for CommandXyplot {
     fn plot(
         &self,
         call: &EvaluatedCall,
-        input: &Value,
+        _input: &Value,
     ) -> Result<Value, LabeledError> {
-        let CliOpts {
-            height_op,
-            width_op,
-            legend,
-            steps,
-            bars,
-            points,
-            title,
-            bins,
-        } = parse_cli_opts(call)?;
         Err(LabeledError::new( "Doesn't make sense to plot an xyplot with a single list of values.").with_label("Plot type error.", call.head))
     }
 
@@ -841,7 +699,7 @@ impl Plotter for CommandXyplot {
             bars,
             points,
             title,
-            bins,
+            bins: _,
         } = parse_cli_opts(call)?;
 
         let max_x = width_op.unwrap_or(200);
@@ -876,95 +734,26 @@ impl Plotter for CommandXyplot {
 
             data.push((min_max_x, v?));
         }
+        if data.len() != 2 {
+            return Err(LabeledError::new("xyplot requires a nested list of length 2.").with_label( "Wrong number of dimensions in xyplot.", call.head));
+        }
 
-        let (mut min, mut max) = {
+        let (min, max) = {
             // only interested in the first list
             let (_, xy_x) = &data[0].0;
             xy_x.unwrap()
         };
 
-        // copying data structure again here but wanted to be explicit.
-        if data.len() != 2 {
-            return Err(LabeledError::new("xyplot requires a nested list of length 2.").with_label( "Wrong number of dimensions in xyplot.", call.head));
-        }
         let y: Vec<f32> = data[1].1.iter().map(|e| e.1).collect();
         let xy: Vec<(f32, f32)> = data[0].1.iter().map(|e| e.1).zip(y).collect();
         let chart_data = vec![xy];
 
         let mut chart = Chart::new(max_x, max_y, min, max);
 
-        let charts = match chart_data.len() {
-            // this is xyplot
-            1 => chart
-                .lineplot(&chart_shape(steps, bars, points, call, &chart_data[0])?)
-                .to_string(),
-            // this is plot/hist
-            2 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .to_string(),
-            3 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .to_string(),
-            4 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[3])?,
-                    COLORS[3],
-                )
-                .to_string(),
-            5 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[3])?,
-                    COLORS[3],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[4])?,
-                    COLORS[4],
-                )
-                .to_string(),
-            _ => unreachable!(),
-        };
+        let charts = chart
+            .lineplot(&chart_shape(steps, bars, points, call, &chart_data[0])?)
+            .to_string();
+
 
         let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
 
