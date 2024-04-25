@@ -6,39 +6,14 @@
 //! - `hist` plots a 1-dimensional numeric list/nested list
 //! - `xyplot` plots a 2-dimensional numeric list (nested list with length == 2)
 
-use nu_plugin::{EvaluatedCall, LabeledError, Plugin};
-use nu_protocol::{Category, PluginSignature, SyntaxShape, Type, Value};
+use nu_plugin::{EvaluatedCall, Plugin, SimplePluginCommand};
+use nu_protocol::{Category, LabeledError, Signature, SyntaxShape, Type, Value};
 pub mod color_plot;
 
 use color_plot::drawille::PixelColor;
 use color_plot::textplots::{utils::histogram, Chart, ColorPlot, Plot, Shape};
 use owo_colors::OwoColorize;
 
-/// The type of plot to make. Probably don't need this
-/// enum, but made me think more clearly.
-enum PlotType {
-    /// Normal indexed numeric plot.
-    Plot,
-    /// Internally compute the histogram of a list of
-    /// numbers and then plot.
-    Hist,
-    /// A bivariate plot, a nested list of length 2.
-    XYplot,
-}
-
-impl PlotType {
-    fn from(string: &str) -> Self {
-        match string {
-            "plot" => Self::Plot,
-            "hist" => Self::Hist,
-            "xyplot" => Self::XYplot,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-/// `Plotter` struct passed to nu.
-pub struct Plotter;
 
 /// So the chart is not hard up against the left of the terminal.
 const TAB: &str = "    ";
@@ -135,13 +110,23 @@ fn chart_shape<'a>(
         (false, true, false) => Ok(Shape::Bars(v)),
         (false, false, true) => Ok(Shape::Points(v)),
         (false, false, false) => Ok(Shape::Lines(v)),
-        _ => Err(LabeledError {
-            label: "Chart shape error".into(),
-            msg:
-                "Shape must be either steps or bars or points, not more than one. Check your flags!"
-                    .into(),
-            span: Some(call.head),
-        }),
+        _ => Err(LabeledError::new("Shape must be either steps or bars or points, not more than one. Check your flags!").with_label("Chart shape error", call.head)),
+    }
+}
+
+/// Check the chart shape is Okay. If not returns an error.
+fn check_chart_shape<'a>(
+    steps: bool,
+    bars: bool,
+    points: bool,
+    call: &EvaluatedCall,
+) -> Result<(), LabeledError> {
+    match (steps, bars, points) {
+        (true, false, false) => Ok(()),
+        (false, true, false) => Ok(()),
+        (false, false, true) => Ok(()),
+        (false, false, false) => Ok(()),
+        _ => Err(LabeledError::new("Shape must be either steps or bars or points, not more than one. Check your flags!").with_label("Chart shape error", call.head)),
     }
 }
 
@@ -154,330 +139,6 @@ fn min_max(series: &[f32]) -> (f32, f32) {
         .iter()
         .fold(std::f32::MIN, |accu, &x| if x > accu { x } else { accu });
     (min, max)
-}
-
-impl Plotter {
-    /// The configuration
-    pub fn config(
-        &self,
-        config: &Option<Value>,
-        call: &EvaluatedCall,
-    ) -> Result<Value, LabeledError> {
-        match config {
-            Some(config) => Ok(config.clone()),
-            None => Err(LabeledError {
-                label: "No config sent".into(),
-                msg: "Configuration for this plugin was not found in `$env.config.plugins.plot`"
-                    .into(),
-                span: Some(call.head),
-            }),
-        }
-    }
-    /// Plot a single list of numbers.
-    fn plot(
-        &self,
-        call: &EvaluatedCall,
-        input: &Value,
-        plot_type: &str,
-    ) -> Result<Value, LabeledError> {
-        let CliOpts {
-            height_op,
-            width_op,
-            legend,
-            steps,
-            bars,
-            points,
-            title,
-            bins,
-        } = parse_cli_opts(call)?;
-
-        let max_x = width_op.unwrap_or(200);
-        let max_y = height_op.unwrap_or(50);
-
-        let values = input.as_list()?;
-
-        let v: Result<Vec<(f32, f32)>, LabeledError> = values
-            .iter()
-            .enumerate()
-            .map(|(i, e)| match e {
-                Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
-                Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
-                e => Err(LabeledError {
-                    label: "Incorrect type supplied.".into(),
-                    msg: format!("Got {}, need integer or float.", e.get_type()),
-                    span: Some(call.head),
-                }),
-            })
-            .collect();
-
-        let mut min_max_x = {
-            let x: Vec<f32> = v.clone().unwrap().iter().map(|e| e.0).collect();
-            min_max(&x)
-        };
-
-        let chart_data = match PlotType::from(plot_type) {
-            PlotType::Plot => v,
-            PlotType::Hist => {
-                let (min, max) = min_max(
-                    &v.clone()
-                        .unwrap()
-                        .iter()
-                        .map(|(_, e)| *e)
-                        .collect::<Vec<f32>>(),
-                );
-                let hist_data = histogram(
-                    &v.unwrap(),
-                    min,
-                    max,
-                    bins.map(|e| e as usize).unwrap_or(20),
-                );
-
-                min_max_x = (min, max);
-
-                Ok(hist_data)
-            }
-            PlotType::XYplot => Err(LabeledError {
-                label: "Plot type error.".into(),
-                msg: "Doesn't make sense to plot an xyplot with a single list of values.".into(),
-                span: Some(call.head),
-            }),
-        };
-
-        let mut chart = Chart::new(max_x, max_y, min_max_x.0, min_max_x.1)
-            .lineplot(&chart_shape(steps, bars, points, call, &chart_data?)?)
-            .to_string();
-
-        if let Some(t) = title {
-            chart = TAB.to_owned() + &t + "\n" + &chart;
-        }
-        chart = TAB.to_owned() + &chart.replace('\n', &format!("\n{}", TAB));
-
-        if legend {
-            chart += &format!("Line 1: {}", "---".white());
-        }
-
-        Ok(Value::string(chart, call.head))
-    }
-
-    /// Plot a nested list of numbers.
-    ///
-    /// It's guaranteed when calling this function that
-    /// the input is a nested list with each element of equal length
-    /// and type (int/float)
-    fn plot_nested(
-        &self,
-        call: &EvaluatedCall,
-        input: &Value,
-        plot_type: &str,
-    ) -> Result<Value, LabeledError> {
-        let CliOpts {
-            height_op,
-            width_op,
-            legend,
-            steps,
-            bars,
-            points,
-            title,
-            bins,
-        } = parse_cli_opts(call)?;
-
-        let max_x = width_op.unwrap_or(200);
-        let max_y = height_op.unwrap_or(50);
-
-        let values = input.as_list()?;
-        if values.len() > 5 {
-            return Err(LabeledError {
-                label: "Nested list error.".into(),
-                msg: "Nested list can't contain more than 5 inner lists.".into(),
-                span: Some(call.head),
-            });
-        }
-
-        let mut data = vec![];
-
-        for val in values {
-            let list = val.as_list()?;
-
-            let v: Result<Vec<(f32, f32)>, LabeledError> = list
-                .iter()
-                .enumerate()
-                .map(|(i, e)| match e {
-                    Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
-                    Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
-                    e => Err(LabeledError {
-                        label: "Incorrect type supplied.".into(),
-                        msg: format!("Got {}, need integer or float.", e.get_type()),
-                        span: Some(call.head),
-                    }),
-                })
-                .collect();
-
-            let min_max_x = {
-                let x: Vec<f32> = v.clone()?.iter().map(|e| e.0).collect();
-                let y = if plot_type == "xyplot" {
-                    let temp: Vec<f32> = v.clone()?.iter().map(|e| e.1).collect();
-                    Some(min_max(&temp))
-                } else {
-                    None
-                };
-                (min_max(&x), y)
-            };
-
-            data.push((min_max_x, v?));
-        }
-
-        let (mut min, mut max) = 'minmax: {
-            // only interested in the first list
-            if plot_type == "xyplot" {
-                let (_, xy_x) = &data[0].0;
-                break 'minmax xy_x.unwrap();
-            }
-            let min_all: Vec<f32> = data.iter().map(|((e, _), _)| e.0).collect();
-            let max_all: Vec<f32> = data.iter().map(|((e, _), _)| e.1).collect();
-
-            let min = min_all.iter().fold(f32::INFINITY, |a, &b| a.min(b));
-            let max = max_all.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
-
-            (min, *max)
-        };
-
-        // copying data structure again here but wanted to be explicit.
-        let chart_data: Vec<Vec<(f32, f32)>> = match PlotType::from(plot_type) {
-            PlotType::Plot => data.iter().map(|(_, e)| e.clone()).collect(),
-            PlotType::Hist => {
-                // we need to adjust the x axis for the histogram.
-                let mut mins = 0.0;
-                let mut maxs = 0.0;
-
-                for (i, (_, el)) in data.iter().enumerate() {
-                    let (min, max) = min_max(&el.iter().map(|(_, e)| *e).collect::<Vec<f32>>());
-                    if i == 0 {
-                        maxs = max;
-                        mins = min;
-                    } else {
-                        if max > maxs {
-                            maxs = max;
-                        }
-                        if min < mins {
-                            mins = min;
-                        }
-                    }
-                }
-
-                let hist_data: Vec<Vec<(f32, f32)>> = data
-                    .iter()
-                    .map(|(_, e)| histogram(e, mins, maxs, bins.map(|e| e as usize).unwrap_or(20)))
-                    .collect();
-
-                (min, max) = (mins, maxs);
-
-                hist_data
-            }
-            PlotType::XYplot => {
-                // quick and dirty for the moment.
-                if data.len() != 2 {
-                    return Err(LabeledError {
-                        label: "Wrong number of dimensions in xyplot.".into(),
-                        msg: "xyplot requires a nested list of length 2.".into(),
-                        span: Some(call.head),
-                    });
-                }
-                let y: Vec<f32> = data[1].1.iter().map(|e| e.1).collect();
-                let xy: Vec<(f32, f32)> = data[0].1.iter().map(|e| e.1).zip(y).collect();
-                vec![xy]
-            }
-        };
-
-        let mut chart = Chart::new(max_x, max_y, min, max);
-
-        let charts = match chart_data.len() {
-            // this is xyplot
-            1 => chart
-                .lineplot(&chart_shape(steps, bars, points, call, &chart_data[0])?)
-                .to_string(),
-            // this is plot/hist
-            2 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .to_string(),
-            3 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .to_string(),
-            4 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[3])?,
-                    COLORS[3],
-                )
-                .to_string(),
-            5 => chart
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[0])?,
-                    COLORS[0],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[1])?,
-                    COLORS[1],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[2])?,
-                    COLORS[2],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[3])?,
-                    COLORS[3],
-                )
-                .linecolorplot(
-                    &chart_shape(steps, bars, points, call, &chart_data[4])?,
-                    COLORS[4],
-                )
-                .to_string(),
-            _ => unreachable!(),
-        };
-
-        let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
-
-        if let Some(t) = title {
-            final_chart = TAB.to_owned() + &t + "\n" + &final_chart;
-        }
-
-        if legend {
-            for (l, (_, _)) in data.iter().enumerate() {
-                let col: PixelColor = COLORS[l];
-                final_chart += &format!("Line {}: {} ", l + 1, "---".color(col));
-            }
-        }
-
-        Ok(Value::string(final_chart, call.head))
-    }
 }
 
 /// Get the type of a `Value`, and its length if it's a list.
@@ -512,22 +173,14 @@ fn check_equality_of_list(
     let check_type_pass = types.iter().all(|e| e == first_type);
 
     if !check_type_pass {
-        return Err(LabeledError {
-            label: "Type differences.".into(),
-            msg: "Can't plot a list of multiple types.".into(),
-            span: Some(call.head),
-        });
+        return Err(LabeledError::new("Can't plot a list of multiple types.").with_label("Type differences.", call.head) );
     }
 
     let first_len_op = &len_ops[0];
     let check_len_pass = len_ops.iter().all(|e| e == first_len_op);
 
     if !check_len_pass {
-        return Err(LabeledError {
-            label: "List length differences.".into(),
-            msg: "Can't plot a list of differing length lists.".into(),
-            span: Some(call.head),
-        });
+        return Err(LabeledError::new("Can't plot a list of differing length lists.").with_label("List length differences.", call.head));
     }
 
     if let Some(_len) = first_len_op {
@@ -536,11 +189,7 @@ fn check_equality_of_list(
         match inner_type {
             Type::Float | Type::Int => (),
             _ => {
-                return Err(LabeledError {
-                    label: "Incorrect type.".into(),
-                    msg: "Nested list elements not float or int.".into(),
-                    span: Some(call.head),
-                })
+                return Err(LabeledError::new("Nested list elements not float or int.").with_label("Incorrect type.", call.head));
             }
         }
     }
@@ -548,156 +197,686 @@ fn check_equality_of_list(
     Ok((first_type.clone(), *first_len_op))
 }
 
-impl Plugin for Plotter {
-    // Try and keep it one command with a few flags
-    fn signature(&self) -> Vec<PluginSignature> {
+pub struct PluginPlot;
+
+struct CommandPlot;
+struct CommandHist;
+struct CommandXyplot;
+struct CommandPlotConfig;
+
+impl Plugin for PluginPlot {
+    fn commands(&self) -> Vec<Box<dyn nu_plugin::PluginCommand<Plugin = Self>>> {
         vec![
-            // plot
-            PluginSignature::build("plot")
-                .usage("Render an ASCII plot from a list of values.")
-                .named(
-                    "width",
-                    SyntaxShape::Number,
-                    "The maximum width of the plot.",
-                    None,
-                )
-                .named(
-                    "height",
-                    SyntaxShape::Number,
-                    "The maximum height of the plot.",
-                    None,
-                )
-                .named(
-                    "title",
-                    SyntaxShape::String,
-                    "Provide a title to the plot.",
-                    Some('t'),
-                )
-                .switch("legend", "Plot a tiny, maybe useful legend.", Some('l'))
-                .switch("bars", "Change lines to bars.", Some('b'))
-                .switch("steps", "Change lines to steps.", Some('s'))
-                .switch("points", "Change lines to points.", Some('p'))
-                .category(Category::Experimental),
-            // histogram
-            PluginSignature::build("hist")
-                .usage("Render an ASCII histogram from a list of values.")
-                .named(
-                    "width",
-                    SyntaxShape::Number,
-                    "The maximum width of the plot.",
-                    None,
-                )
-                .named(
-                    "height",
-                    SyntaxShape::Number,
-                    "The maximum height of the plot.",
-                    None,
-                )
-                .named(
-                    "title",
-                    SyntaxShape::String,
-                    "Provide a title to the plot.",
-                    Some('t'),
-                )
-                .named(
-                    "bins",
-                    SyntaxShape::Number,
-                    "The number of bins in the histogram, default is 20.",
-                    None,
-                )
-                .switch("legend", "Plot a tiny, maybe useful legend.", Some('l'))
-                .switch("bars", "Change lines to bars.", Some('b'))
-                .switch("steps", "Change lines to steps.", Some('s'))
-                .category(Category::Experimental),
-            // plot
-            PluginSignature::build("xyplot")
-                .usage("Render an ASCII xy plot from a list of values.")
-                .named(
-                    "width",
-                    SyntaxShape::Number,
-                    "The maximum width of the plot.",
-                    None,
-                )
-                .named(
-                    "height",
-                    SyntaxShape::Number,
-                    "The maximum height of the plot.",
-                    None,
-                )
-                .named(
-                    "title",
-                    SyntaxShape::String,
-                    "Provide a title to the plot.",
-                    Some('t'),
-                )
-                .switch("legend", "Plot a tiny, maybe useful legend.", Some('l'))
-                .switch("bars", "Change lines to bars.", Some('b'))
-                .switch("steps", "Change lines to steps.", Some('s'))
-                .switch("points", "Change lines to points.", Some('p'))
-                .category(Category::Experimental),
-            PluginSignature::build("plot-config")
-                .usage("Show plugin configuration")
-                .extra_usage("The configuration is set under $env.config.plugins.plot")
-                .category(Category::Experimental)
-                .search_terms(vec!["plot".into(), "configuration".into()])
-                .input_output_type(Type::Nothing, Type::Table(vec![])),
+            Box::new(CommandPlot), Box::new(CommandHist), Box::new(CommandXyplot)
         ]
     }
+}
 
-    fn run(
-        &mut self,
-        name: &str,
-        config: &Option<Value>,
+trait Plotter {
+    fn plot(
+        &self,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, LabeledError>;
+    fn plot_nested(
+        &self,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, LabeledError>;
+}
+
+impl Plotter for CommandPlot {
+    fn plot(
+        &self,
         call: &EvaluatedCall,
         input: &Value,
     ) -> Result<Value, LabeledError> {
-        match name {
-            "plot" | "hist" | "xyplot" => {
-                // here we want to check what the input is.
-                match input.as_list() {
-                    Ok(list) => {
-                        // so we have a list. what's in it? we need to check each inner value
-                        if list.is_empty() {
-                            return Err(LabeledError {
-                                label: "No elements in the list.".into(),
-                                msg: "Can't plot a zero element list.".into(),
-                                span: Some(call.head)
-                            })
-                        }
+        let CliOpts {
+            height_op,
+            width_op,
+            legend,
+            steps,
+            bars,
+            points,
+            title,
+            bins: _,
+        } = parse_cli_opts(call)?;
 
-                        let (value_type, list_len_op) = check_equality_of_list(list, call)?;
+        let max_x = width_op.unwrap_or(200);
+        let max_y = height_op.unwrap_or(50);
 
-                        // if in fact we have a nested list
-                        if let Some(_len) = list_len_op {
-                            // we haven't implemented this yet
-                            self.plot_nested(call, input, name)
-                        } else {
-                            // we have a normal plot, single list of numbers
-                            match value_type {
-                                Type::Float | Type::Int => self.plot(call, input, name),
-                                e =>  Err(LabeledError {
-                                    label: "Incorrect List type.".into(),
-                                    msg: format!("List type is {}, but should be float or int.", e),
-                                    span: Some(call.head)
-                                })
-                            }
-                        }
-                    },
-                    Err(e) => Err(LabeledError {
-                        label: "Incorrect input type.".into(),
-                        msg: format!("Input type should be a list: {}.", e),
-                        span: Some(call.head)
-                    }),
+        let values = input.as_list()?;
+
+        let v: Result<Vec<(f32, f32)>, LabeledError> = values
+            .iter()
+            .enumerate()
+            .map(|(i, e)| match e {
+                Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
+                Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
+                e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied", call.head)),
+            })
+            .collect();
+
+        let min_max_x = {
+            let x: Vec<f32> = v.clone().unwrap().iter().map(|e| e.0).collect();
+            min_max(&x)
+        };
+
+        let chart_data = v;
+
+        let mut chart = Chart::new(max_x, max_y, min_max_x.0, min_max_x.1)
+            .lineplot(&chart_shape(steps, bars, points, call, &chart_data?)?)
+            .to_string();
+
+        if let Some(t) = title {
+            chart = TAB.to_owned() + &t + "\n" + &chart;
+        }
+        chart = TAB.to_owned() + &chart.replace('\n', &format!("\n{}", TAB));
+
+        if legend {
+            chart += &format!("Line 1: {}", "---".white());
+        }
+
+        Ok(Value::string(chart, call.head))
+    }
+
+    fn plot_nested<'a>(
+        &self,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, LabeledError> {
+        let CliOpts {
+            height_op,
+            width_op,
+            legend,
+            steps,
+            bars,
+            points,
+            title,
+            bins: _,
+        } = parse_cli_opts(call)?;
+
+        let max_x = width_op.unwrap_or(200);
+        let max_y = height_op.unwrap_or(50);
+
+        let values = input.as_list()?;
+        if values.len() > 5 {
+            return Err(LabeledError::new("Nested list can't contain more than 5 inner lists.").with_label("Nested list error.", call.head));
+        }
+
+        let mut data = vec![];
+
+        for val in values {
+            let list = val.as_list()?;
+
+            let v: Result<Vec<(f32, f32)>, LabeledError> = list
+                .iter()
+                .enumerate()
+                .map(|(i, e)| match e {
+                    Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
+                    Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
+                    e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied.", call.head)),
+                })
+                .collect();
+
+            let min_max_x = {
+                let x: Vec<f32> = v.clone()?.iter().map(|e| e.0).collect();
+                let y: Option<Vec<f32>> = None;
+                (min_max(&x), y)
+            };
+
+            data.push((min_max_x, v?));
+        }
+
+        let min_all: Vec<f32> = data.iter().map(|((e, _), _)| e.0).collect();
+        let max_all: Vec<f32> = data.iter().map(|((e, _), _)| e.1).collect();
+
+        let min = min_all.iter().fold(f32::INFINITY, |a, &b| a.min(b));
+        let max = *max_all.iter().max_by(|a, b| a.total_cmp(b)).unwrap();
+
+        // copying data structure again here but wanted to be explicit.
+        let chart_data: Vec<Vec<(f32, f32)>> = data.iter().map(|(_, e)| e.clone()).collect();
+
+        // let shapes = chart_data.into_iter().map(|data| chart_shape(steps, bars, points, call, &data));
+        check_chart_shape(steps, bars, points, call)?;
+        let shapes: Vec<Shape> = (&chart_data)
+            .iter()
+            .map(|data| chart_shape(steps, bars, points, call, data).unwrap())
+            .collect();
+        let charts = (&shapes).iter()
+            .enumerate()
+            .fold(&mut Chart::new(max_x, max_y, min, max), |chart, (i, shape)| {
+                chart.linecolorplot(shape, COLORS[i])
+            })
+            .to_string();
+
+        let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
+
+        if let Some(t) = title {
+            final_chart = TAB.to_owned() + &t + "\n" + &final_chart;
+        }
+
+        if legend {
+            for (l, (_, _)) in data.iter().enumerate() {
+                let col: PixelColor = COLORS[l];
+                final_chart += &format!("Line {}: {} ", l + 1, "---".color(col));
+            }
+        }
+
+        Ok(Value::string(final_chart, call.head))
+    }
+}
+
+
+impl SimplePluginCommand for CommandPlot {
+    type Plugin = PluginPlot;
+
+    fn name(&self) -> &str {
+        "plot"
+    }
+
+    fn signature(&self) -> nu_protocol::Signature {
+        Signature::build("plot")
+            .usage("Render an ASCII plot from a list of values.")
+            .named(
+                "width",
+                SyntaxShape::Number,
+                "The maximum width of the plot.",
+                None,
+            )
+            .named(
+                "height",
+                SyntaxShape::Number,
+                "The maximum height of the plot.",
+                None,
+            )
+            .named(
+                "title",
+                SyntaxShape::String,
+                "Provide a title to the plot.",
+                Some('t'),
+            )
+            .switch("legend", "Plot a tiny, maybe useful legend.", Some('l'))
+            .switch("bars", "Change lines to bars.", Some('b'))
+            .switch("steps", "Change lines to steps.", Some('s'))
+            .switch("points", "Change lines to points.", Some('p'))
+            .category(Category::Experimental)
+    }
+
+    fn usage(&self) -> &str {
+        "Render an ASCII plot from a list of values."
+    }
+
+    fn run(
+        &self,
+        _plugin: &Self::Plugin,
+        _engine: &nu_plugin::EngineInterface,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, LabeledError> {
+        match input.as_list() {
+            Ok(list) => {
+                if list.is_empty() {
+                    return Err(LabeledError::new("Can't plot a zero element list.").with_label( "No elements in the list.", call.head));
+                }
+                let (value_type, list_len_op) = check_equality_of_list(list, call)?;
+
+                // if in fact we have a nested list
+                if let Some(_len) = list_len_op {
+                    // we haven't implemented this yet
+                    self.plot_nested(call, input)
+                } else {
+                    // we have a normal plot, single list of numbers
+                    match value_type {
+                        Type::Float | Type::Int => self.plot(call, input),
+                        e =>  Err(LabeledError::new(format!("List type is {}, but should be float or int.", e)).with_label("Incorrect List type.", call.head)),
+                    }
+                }
+            },
+            Err(e) => Err(LabeledError::new(format!("Input type should be a list: {}.", e)).with_label( "Incorrect input type.", call.head)),
+        }
+    }
+}
+
+impl Plotter for CommandHist {
+    fn plot(
+        &self,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, LabeledError> {
+        let CliOpts {
+            height_op,
+            width_op,
+            legend,
+            steps,
+            bars,
+            points,
+            title,
+            bins,
+        } = parse_cli_opts(call)?;
+
+        let max_x = width_op.unwrap_or(200);
+        let max_y = height_op.unwrap_or(50);
+
+        let values = input.as_list()?;
+
+        let v: Result<Vec<(f32, f32)>, LabeledError> = values
+            .iter()
+            .enumerate()
+            .map(|(i, e)| match e {
+                Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
+                Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
+                e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied", call.head)),
+            })
+            .collect();
+
+        let (min, max) = min_max(
+            &v.clone()
+                .unwrap()
+                .iter()
+                .map(|(_, e)| *e)
+                .collect::<Vec<f32>>(),
+        );
+        let chart_data: Vec<(f32, f32)> = histogram(
+            &v.unwrap(),
+            min,
+            max,
+            bins.map(|e| e as usize).unwrap_or(20),
+        );
+        let min_max_x = (min, max);
+
+
+        let mut chart = Chart::new(max_x, max_y, min_max_x.0, min_max_x.1)
+            .lineplot(&chart_shape(steps, bars, points, call, &chart_data)?)
+            .to_string();
+
+        if let Some(t) = title {
+            chart = TAB.to_owned() + &t + "\n" + &chart;
+        }
+        chart = TAB.to_owned() + &chart.replace('\n', &format!("\n{}", TAB));
+
+        if legend {
+            chart += &format!("Line 1: {}", "---".white());
+        }
+
+        Ok(Value::string(chart, call.head))
+    }
+
+    fn plot_nested(
+        &self,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, LabeledError> {
+        let CliOpts {
+            height_op,
+            width_op,
+            legend,
+            steps,
+            bars,
+            points,
+            title,
+            bins,
+        } = parse_cli_opts(call)?;
+
+        let max_x = width_op.unwrap_or(200);
+        let max_y = height_op.unwrap_or(50);
+
+        let values = input.as_list()?;
+        if values.len() > 5 {
+            return Err(LabeledError::new("Nested list can't contain more than 5 inner lists.").with_label("Nested list error.", call.head));
+        }
+
+        let mut data = vec![];
+
+        for val in values {
+            let list = val.as_list()?;
+
+            let v: Result<Vec<(f32, f32)>, LabeledError> = list
+                .iter()
+                .enumerate()
+                .map(|(i, e)| match e {
+                    Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
+                    Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
+                    e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied.", call.head)),
+                })
+                .collect();
+
+            let x: Vec<f32> = v.clone()?.iter().map(|e| e.0).collect();
+            let y: Option<Vec<f32>> = None;
+            let min_max_x = (min_max(&x), y);
+
+            data.push((min_max_x, v?));
+        }
+
+        // copying data structure again here but wanted to be explicit.
+        let mut mins = 0.0;
+        let mut maxs = 0.0;
+
+        for (i, (_, el)) in data.iter().enumerate() {
+            let (min, max) = min_max(&el.iter().map(|(_, e)| *e).collect::<Vec<f32>>());
+            if i == 0 {
+                maxs = max;
+                mins = min;
+            } else {
+                if max > maxs {
+                    maxs = max;
+                }
+                if min < mins {
+                    mins = min;
                 }
             }
-            "plot-config" => {
-                self.config(config, call)
+        }
+        let (min, max) = (mins, maxs);
+
+        let hist_data: Vec<Vec<(f32, f32)>> = data
+            .iter()
+            .map(|(_, e)| histogram(e, mins, maxs, bins.map(|e| e as usize).unwrap_or(20)))
+            .collect();
+
+        check_chart_shape(steps, bars, points, call)?;
+        let shapes: Vec<Shape> = (&hist_data)
+            .iter()
+            .map(|data| chart_shape(steps, bars, points, call, data).unwrap())
+            .collect();
+        let charts = (&shapes).iter()
+            .enumerate()
+            .fold(&mut Chart::new(max_x, max_y, min, max), |chart, (i, shape)| {
+                chart.linecolorplot(shape, COLORS[i])
+            })
+            .to_string();
+
+        let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
+
+        if let Some(t) = title {
+            final_chart = TAB.to_owned() + &t + "\n" + &final_chart;
+        }
+
+        if legend {
+            for (l, (_, _)) in data.iter().enumerate() {
+                let col: PixelColor = COLORS[l];
+                final_chart += &format!("Line {}: {} ", l + 1, "---".color(col));
             }
-            _ => Err(LabeledError {
-                label: "Plugin call with wrong name signature".into(),
-                msg: "the signature used to call the plugin does not match any name in the plugin signature vector".into(),
-                span: Some(call.head),
-            }),
+        }
+
+        Ok(Value::string(final_chart, call.head))
+    }
+}
+
+impl SimplePluginCommand for CommandHist {
+    type Plugin = PluginPlot;
+
+    fn name(&self) -> &str {
+        "hist"
+    }
+
+    fn signature(&self) -> nu_protocol::Signature {
+        Signature::build("hist")
+            .usage("Render an ASCII histogram from a list of values.")
+            .named(
+                "width",
+                SyntaxShape::Number,
+                "The maximum width of the plot.",
+                None,
+            )
+            .named(
+                "height",
+                SyntaxShape::Number,
+                "The maximum height of the plot.",
+                None,
+            )
+            .named(
+                "title",
+                SyntaxShape::String,
+                "Provide a title to the plot.",
+                Some('t'),
+            )
+            .named(
+                "bins",
+                SyntaxShape::Number,
+                "The number of bins in the histogram, default is 20.",
+                None,
+            )
+            .switch("legend", "Plot a tiny, maybe useful legend.", Some('l'))
+            .switch("bars", "Change lines to bars.", Some('b'))
+            .switch("steps", "Change lines to steps.", Some('s'))
+            .category(Category::Experimental)
+    }
+
+    fn usage(&self) -> &str {
+        "Render an ASCII histogram from a list of values."
+    }
+
+    fn run(
+        &self,
+        _plugin: &Self::Plugin,
+        _engine: &nu_plugin::EngineInterface,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, LabeledError> {
+        match input.as_list() {
+            Ok(list) => {
+                if list.is_empty() {
+                    return Err(LabeledError::new("Can't plot a zero element list.").with_label( "No elements in the list.", call.head));
+                }
+                let (value_type, list_len_op) = check_equality_of_list(list, call)?;
+
+                // if in fact we have a nested list
+                if let Some(_len) = list_len_op {
+                    // we haven't implemented this yet
+                    self.plot_nested(call, input)
+                } else {
+                    // we have a normal plot, single list of numbers
+                    match value_type {
+                        Type::Float | Type::Int => self.plot(call, input),
+                        e =>  Err(LabeledError::new(format!("List type is {}, but should be float or int.", e)).with_label("Incorrect List type.", call.head)),
+                    }
+                }
+            },
+            Err(e) => Err(LabeledError::new(format!("Input type should be a list: {}.", e)).with_label( "Incorrect input type.", call.head)),
+        }
+    }
+}
+
+impl Plotter for CommandXyplot {
+    fn plot(
+        &self,
+        call: &EvaluatedCall,
+        _input: &Value,
+    ) -> Result<Value, LabeledError> {
+        Err(LabeledError::new( "Doesn't make sense to plot an xyplot with a single list of values.").with_label("Plot type error.", call.head))
+    }
+
+    fn plot_nested(
+        &self,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, LabeledError> {
+        let CliOpts {
+            height_op,
+            width_op,
+            legend,
+            steps,
+            bars,
+            points,
+            title,
+            bins: _,
+        } = parse_cli_opts(call)?;
+
+        let max_x = width_op.unwrap_or(200);
+        let max_y = height_op.unwrap_or(50);
+
+        let values = input.as_list()?;
+        if values.len() > 5 {
+            return Err(LabeledError::new("Nested list can't contain more than 5 inner lists.").with_label("Nested list error.", call.head));
+        }
+
+        let mut data = vec![];
+
+        for val in values {
+            let list = val.as_list()?;
+
+            let v: Result<Vec<(f32, f32)>, LabeledError> = list
+                .iter()
+                .enumerate()
+                .map(|(i, e)| match e {
+                    Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
+                    Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
+                    e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied.", call.head)),
+                })
+                .collect();
+
+            let min_max_x = {
+                let x: Vec<f32> = v.clone()?.iter().map(|e| e.0).collect();
+                let temp: Vec<f32> = v.clone()?.iter().map(|e| e.1).collect();
+                let y = Some(min_max(&temp));
+                (min_max(&x), y)
+            };
+
+            data.push((min_max_x, v?));
+        }
+        if data.len() != 2 {
+            return Err(LabeledError::new("xyplot requires a nested list of length 2.").with_label( "Wrong number of dimensions in xyplot.", call.head));
+        }
+
+        let (min, max) = {
+            // only interested in the first list
+            let (_, xy_x) = &data[0].0;
+            xy_x.unwrap()
+        };
+
+        let y: Vec<f32> = data[1].1.iter().map(|e| e.1).collect();
+        let xy: Vec<(f32, f32)> = data[0].1.iter().map(|e| e.1).zip(y).collect();
+        let chart_data = vec![xy];
+
+        let mut chart = Chart::new(max_x, max_y, min, max);
+
+        let charts = chart
+            .lineplot(&chart_shape(steps, bars, points, call, &chart_data[0])?)
+            .to_string();
+
+
+        let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
+
+        if let Some(t) = title {
+            final_chart = TAB.to_owned() + &t + "\n" + &final_chart;
+        }
+
+        if legend {
+            for (l, (_, _)) in data.iter().enumerate() {
+                let col: PixelColor = COLORS[l];
+                final_chart += &format!("Line {}: {} ", l + 1, "---".color(col));
+            }
+        }
+
+        Ok(Value::string(final_chart, call.head))
+    }
+}
+
+impl SimplePluginCommand for CommandXyplot {
+    type Plugin = PluginPlot;
+
+    fn name(&self) -> &str {
+        "xyplot"
+    }
+
+    fn signature(&self) -> nu_protocol::Signature {
+        Signature::build("xyplot")
+            .usage("Render an ASCII xy plot from a list of values.")
+            .named(
+                "width",
+                SyntaxShape::Number,
+                "The maximum width of the plot.",
+                None,
+            )
+            .named(
+                "height",
+                SyntaxShape::Number,
+                "The maximum height of the plot.",
+                None,
+            )
+            .named(
+                "title",
+                SyntaxShape::String,
+                "Provide a title to the plot.",
+                Some('t'),
+            )
+            .switch("legend", "Plot a tiny, maybe useful legend.", Some('l'))
+            .switch("bars", "Change lines to bars.", Some('b'))
+            .switch("steps", "Change lines to steps.", Some('s'))
+            .switch("points", "Change lines to points.", Some('p'))
+            .category(Category::Experimental)
+    }
+
+    fn usage(&self) -> &str {
+        "Render an ASCII xy plot from a list of values."
+    }
+
+    fn run(
+        &self,
+        _plugin: &Self::Plugin,
+        _engine: &nu_plugin::EngineInterface,
+        call: &EvaluatedCall,
+        input: &Value,
+    ) -> Result<Value, LabeledError> {
+        match input.as_list() {
+            Ok(list) => {
+                if list.is_empty() {
+                    return Err(LabeledError::new("Can't plot a zero element list.").with_label( "No elements in the list.", call.head));
+                }
+                let (value_type, list_len_op) = check_equality_of_list(list, call)?;
+
+                // if in fact we have a nested list
+                if let Some(_len) = list_len_op {
+                    // we haven't implemented this yet
+                    self.plot_nested(call, input)
+                } else {
+                    // we have a normal plot, single list of numbers
+                    match value_type {
+                        Type::Float | Type::Int => self.plot(call, input),
+                        e =>  Err(LabeledError::new(format!("List type is {}, but should be float or int.", e)).with_label("Incorrect List type.", call.head)),
+                    }
+                }
+            },
+            Err(e) => Err(LabeledError::new(format!("Input type should be a list: {}.", e)).with_label( "Incorrect input type.", call.head)),
+        }
+    }
+}
+
+impl SimplePluginCommand for CommandPlotConfig {
+    type Plugin = PluginPlot;
+
+    fn name(&self) -> &str {
+        "plot-config"
+    }
+
+    fn signature(&self) -> Signature {
+        Signature::build("plot-config")
+            .usage("Show plugin configuration")
+            .extra_usage("The configuration is set under $env.config.plugins.plot")
+            .category(Category::Experimental)
+            .search_terms(vec!["plot".into(), "configuration".into()])
+            .input_output_type(Type::Nothing, Type::Table(vec![]))
+    }
+
+    fn usage(&self) -> &str {
+        "Show plugin configuration"
+    }
+
+    fn run(
+        &self,
+        _plugin: &Self::Plugin,
+        engine: &nu_plugin::EngineInterface,
+        call: &EvaluatedCall,
+        _input: &Value,
+    ) -> Result<Value, LabeledError> {
+        match engine.get_plugin_config() {
+            Ok(config) => {
+                match config {
+                    Some(config) => Ok(config.clone()),
+                    None => Err(LabeledError::new("Configuration for this plugin was not found in `$env.config.plugins.plot`").with_label("No config sent", call.head)),
+                }
+            }
+            Err(_) => Err(LabeledError::new("Configuration for this plugin was not found in `$env.config.plugins.plot`").with_label("No config sent", call.head)),
         }
     }
 }
