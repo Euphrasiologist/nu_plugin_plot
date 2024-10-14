@@ -205,6 +205,9 @@ struct CommandXyplot;
 struct CommandPlotConfig;
 
 impl Plugin for PluginPlot {
+    fn version(&self) -> String {
+        env!("CARGO_PKG_VERSION").into()
+    }
     fn commands(&self) -> Vec<Box<dyn nu_plugin::PluginCommand<Plugin = Self>>> {
         vec![
             Box::new(CommandPlot), Box::new(CommandHist), Box::new(CommandXyplot)
@@ -377,7 +380,7 @@ impl SimplePluginCommand for CommandPlot {
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build("plot")
-            .usage("Render an ASCII plot from a list of values.")
+            .description("Render an ASCII plot from a list of values.")
             .named(
                 "width",
                 SyntaxShape::Number,
@@ -403,7 +406,7 @@ impl SimplePluginCommand for CommandPlot {
             .category(Category::Experimental)
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Render an ASCII plot from a list of values."
     }
 
@@ -611,7 +614,7 @@ impl SimplePluginCommand for CommandHist {
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build("hist")
-            .usage("Render an ASCII histogram from a list of values.")
+            .description("Render an ASCII histogram from a list of values.")
             .named(
                 "width",
                 SyntaxShape::Number,
@@ -642,7 +645,7 @@ impl SimplePluginCommand for CommandHist {
             .category(Category::Experimental)
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Render an ASCII histogram from a list of values."
     }
 
@@ -781,7 +784,7 @@ impl SimplePluginCommand for CommandXyplot {
 
     fn signature(&self) -> nu_protocol::Signature {
         Signature::build("xyplot")
-            .usage("Render an ASCII xy plot from a list of values.")
+            .description("Render an ASCII xy plot from a list of values.")
             .named(
                 "width",
                 SyntaxShape::Number,
@@ -807,7 +810,7 @@ impl SimplePluginCommand for CommandXyplot {
             .category(Category::Experimental)
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Render an ASCII xy plot from a list of values."
     }
 
@@ -851,14 +854,14 @@ impl SimplePluginCommand for CommandPlotConfig {
 
     fn signature(&self) -> Signature {
         Signature::build("plot-config")
-            .usage("Show plugin configuration")
-            .extra_usage("The configuration is set under $env.config.plugins.plot")
+            .description("Show plugin configuration")
+            .extra_description("The configuration is set under $env.config.plugins.plot")
             .category(Category::Experimental)
             .search_terms(vec!["plot".into(), "configuration".into()])
-            .input_output_type(Type::Nothing, Type::Table(vec![]))
+            .input_output_type(Type::Nothing, Type::table())
     }
 
-    fn usage(&self) -> &str {
+    fn description(&self) -> &str {
         "Show plugin configuration"
     }
 

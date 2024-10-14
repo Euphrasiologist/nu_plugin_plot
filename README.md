@@ -12,7 +12,8 @@ cd nu_plugin_plot
 ```
 ```console
 cargo build --release
-register ./target/release/nu_plugin_plot
+plugin add ./target/release/nu_plugin_plot
+plugin use plot
 ```
 ```console
 # test commands
