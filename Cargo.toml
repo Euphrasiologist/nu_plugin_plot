@@ -8,8 +8,8 @@ name = "nu_plugin_plot"
 version = "0.91.1"
 
 [dependencies]
-nu-plugin = "0.99.1"
-nu-protocol = { version = "0.99.1", features = ["plugin"] }
+nu-plugin = "0.100.0"
+nu-protocol = { version = "0.100.0", features = ["plugin"] }
 owo-colors = "3.5.0"
 fnv = "1.0.7"
 term_size = "0.3.2"
