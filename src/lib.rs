@@ -255,7 +255,7 @@ impl Plotter for CommandPlot {
             .enumerate()
             .map(|(i, e)| match e {
                 Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
-                Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
+                Value::Float { .. } => Ok((i as f32, e.as_float()? as f32)),
                 e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied", call.head)),
             })
             .collect();
@@ -317,7 +317,7 @@ impl Plotter for CommandPlot {
                 .enumerate()
                 .map(|(i, e)| match e {
                     Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
-                    Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
+                    Value::Float { .. } => Ok((i as f32, e.as_float()? as f32)),
                     e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied.", call.head)),
                 })
                 .collect();
@@ -468,7 +468,7 @@ impl Plotter for CommandHist {
             .enumerate()
             .map(|(i, e)| match e {
                 Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
-                Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
+                Value::Float { .. } => Ok((i as f32, e.as_float()? as f32)),
                 e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied", call.head)),
             })
             .collect();
@@ -539,7 +539,7 @@ impl Plotter for CommandHist {
                 .enumerate()
                 .map(|(i, e)| match e {
                     Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
-                    Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
+                    Value::Float { .. } => Ok((i as f32, e.as_float()? as f32)),
                     e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied.", call.head)),
                 })
                 .collect();
@@ -723,7 +723,7 @@ impl Plotter for CommandXyplot {
                 .enumerate()
                 .map(|(i, e)| match e {
                     Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
-                    Value::Float { .. } => Ok((i as f32, e.as_f64()? as f32)),
+                    Value::Float { .. } => Ok((i as f32, e.as_float()? as f32)),
                     e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied.", call.head)),
                 })
                 .collect();
