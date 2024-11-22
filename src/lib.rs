@@ -14,7 +14,6 @@ use color_plot::drawille::PixelColor;
 use color_plot::textplots::{utils::histogram, Chart, ColorPlot, Plot, Shape};
 use owo_colors::OwoColorize;
 
-
 /// So the chart is not hard up against the left of the terminal.
 const TAB: &str = "    ";
 
@@ -110,7 +109,10 @@ fn chart_shape<'a>(
         (false, true, false) => Ok(Shape::Bars(v)),
         (false, false, true) => Ok(Shape::Points(v)),
         (false, false, false) => Ok(Shape::Lines(v)),
-        _ => Err(LabeledError::new("Shape must be either steps or bars or points, not more than one. Check your flags!").with_label("Chart shape error", call.head)),
+        _ => Err(LabeledError::new(
+            "Shape must be either steps or bars or points, not more than one. Check your flags!",
+        )
+        .with_label("Chart shape error", call.head)),
     }
 }
 
@@ -126,7 +128,10 @@ fn check_chart_shape<'a>(
         (false, true, false) => Ok(()),
         (false, false, true) => Ok(()),
         (false, false, false) => Ok(()),
-        _ => Err(LabeledError::new("Shape must be either steps or bars or points, not more than one. Check your flags!").with_label("Chart shape error", call.head)),
+        _ => Err(LabeledError::new(
+            "Shape must be either steps or bars or points, not more than one. Check your flags!",
+        )
+        .with_label("Chart shape error", call.head)),
     }
 }
 
@@ -134,10 +139,10 @@ fn check_chart_shape<'a>(
 fn min_max(series: &[f32]) -> (f32, f32) {
     let min = series
         .iter()
-        .fold(std::f32::MAX, |accu, &x| if x < accu { x } else { accu });
+        .fold(f32::MAX, |accu, &x| if x < accu { x } else { accu });
     let max = series
         .iter()
-        .fold(std::f32::MIN, |accu, &x| if x > accu { x } else { accu });
+        .fold(f32::MIN, |accu, &x| if x > accu { x } else { accu });
     (min, max)
 }
 
@@ -173,14 +178,18 @@ fn check_equality_of_list(
     let check_type_pass = types.iter().all(|e| e == first_type);
 
     if !check_type_pass {
-        return Err(LabeledError::new("Can't plot a list of multiple types.").with_label("Type differences.", call.head) );
+        return Err(LabeledError::new("Can't plot a list of multiple types.")
+            .with_label("Type differences.", call.head));
     }
 
     let first_len_op = &len_ops[0];
     let check_len_pass = len_ops.iter().all(|e| e == first_len_op);
 
     if !check_len_pass {
-        return Err(LabeledError::new("Can't plot a list of differing length lists.").with_label("List length differences.", call.head));
+        return Err(
+            LabeledError::new("Can't plot a list of differing length lists.")
+                .with_label("List length differences.", call.head),
+        );
     }
 
     if let Some(_len) = first_len_op {
@@ -189,7 +198,8 @@ fn check_equality_of_list(
         match inner_type {
             Type::Float | Type::Int => (),
             _ => {
-                return Err(LabeledError::new("Nested list elements not float or int.").with_label("Incorrect type.", call.head));
+                return Err(LabeledError::new("Nested list elements not float or int.")
+                    .with_label("Incorrect type.", call.head));
             }
         }
     }
@@ -210,30 +220,20 @@ impl Plugin for PluginPlot {
     }
     fn commands(&self) -> Vec<Box<dyn nu_plugin::PluginCommand<Plugin = Self>>> {
         vec![
-            Box::new(CommandPlot), Box::new(CommandHist), Box::new(CommandXyplot)
+            Box::new(CommandPlot),
+            Box::new(CommandHist),
+            Box::new(CommandXyplot),
         ]
     }
 }
 
 trait Plotter {
-    fn plot(
-        &self,
-        call: &EvaluatedCall,
-        input: &Value,
-    ) -> Result<Value, LabeledError>;
-    fn plot_nested(
-        &self,
-        call: &EvaluatedCall,
-        input: &Value,
-    ) -> Result<Value, LabeledError>;
+    fn plot(&self, call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError>;
+    fn plot_nested(&self, call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError>;
 }
 
 impl Plotter for CommandPlot {
-    fn plot(
-        &self,
-        call: &EvaluatedCall,
-        input: &Value,
-    ) -> Result<Value, LabeledError> {
+    fn plot(&self, call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError> {
         let CliOpts {
             height_op,
             width_op,
@@ -256,7 +256,11 @@ impl Plotter for CommandPlot {
             .map(|(i, e)| match e {
                 Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
                 Value::Float { .. } => Ok((i as f32, e.as_float()? as f32)),
-                e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied", call.head)),
+                e => Err(LabeledError::new(format!(
+                    "Got {}, need integer or float.",
+                    e.get_type()
+                ))
+                .with_label("Incorrect type supplied", call.head)),
             })
             .collect();
 
@@ -283,11 +287,7 @@ impl Plotter for CommandPlot {
         Ok(Value::string(chart, call.head))
     }
 
-    fn plot_nested<'a>(
-        &self,
-        call: &EvaluatedCall,
-        input: &Value,
-    ) -> Result<Value, LabeledError> {
+    fn plot_nested<'a>(&self, call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError> {
         let CliOpts {
             height_op,
             width_op,
@@ -304,7 +304,10 @@ impl Plotter for CommandPlot {
 
         let values = input.as_list()?;
         if values.len() > 5 {
-            return Err(LabeledError::new("Nested list can't contain more than 5 inner lists.").with_label("Nested list error.", call.head));
+            return Err(
+                LabeledError::new("Nested list can't contain more than 5 inner lists.")
+                    .with_label("Nested list error.", call.head),
+            );
         }
 
         let mut data = vec![];
@@ -318,7 +321,11 @@ impl Plotter for CommandPlot {
                 .map(|(i, e)| match e {
                     Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
                     Value::Float { .. } => Ok((i as f32, e.as_float()? as f32)),
-                    e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied.", call.head)),
+                    e => Err(LabeledError::new(format!(
+                        "Got {}, need integer or float.",
+                        e.get_type()
+                    ))
+                    .with_label("Incorrect type supplied.", call.head)),
                 })
                 .collect();
 
@@ -342,15 +349,17 @@ impl Plotter for CommandPlot {
 
         // let shapes = chart_data.into_iter().map(|data| chart_shape(steps, bars, points, call, &data));
         check_chart_shape(steps, bars, points, call)?;
-        let shapes: Vec<Shape> = (&chart_data)
+        let shapes: Vec<Shape> = chart_data
             .iter()
             .map(|data| chart_shape(steps, bars, points, call, data).unwrap())
             .collect();
-        let charts = (&shapes).iter()
+        let charts = shapes
+            .iter()
             .enumerate()
-            .fold(&mut Chart::new(max_x, max_y, min, max), |chart, (i, shape)| {
-                chart.linecolorplot(shape, COLORS[i])
-            })
+            .fold(
+                &mut Chart::new(max_x, max_y, min, max),
+                |chart, (i, shape)| chart.linecolorplot(shape, COLORS[i]),
+            )
             .to_string();
 
         let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
@@ -369,7 +378,6 @@ impl Plotter for CommandPlot {
         Ok(Value::string(final_chart, call.head))
     }
 }
-
 
 impl SimplePluginCommand for CommandPlot {
     type Plugin = PluginPlot;
@@ -420,7 +428,8 @@ impl SimplePluginCommand for CommandPlot {
         match input.as_list() {
             Ok(list) => {
                 if list.is_empty() {
-                    return Err(LabeledError::new("Can't plot a zero element list.").with_label( "No elements in the list.", call.head));
+                    return Err(LabeledError::new("Can't plot a zero element list.")
+                        .with_label("No elements in the list.", call.head));
                 }
                 let (value_type, list_len_op) = check_equality_of_list(list, call)?;
 
@@ -432,21 +441,24 @@ impl SimplePluginCommand for CommandPlot {
                     // we have a normal plot, single list of numbers
                     match value_type {
                         Type::Float | Type::Int => self.plot(call, input),
-                        e =>  Err(LabeledError::new(format!("List type is {}, but should be float or int.", e)).with_label("Incorrect List type.", call.head)),
+                        e => Err(LabeledError::new(format!(
+                            "List type is {}, but should be float or int.",
+                            e
+                        ))
+                        .with_label("Incorrect List type.", call.head)),
                     }
                 }
-            },
-            Err(e) => Err(LabeledError::new(format!("Input type should be a list: {}.", e)).with_label( "Incorrect input type.", call.head)),
+            }
+            Err(e) => Err(
+                LabeledError::new(format!("Input type should be a list: {}.", e))
+                    .with_label("Incorrect input type.", call.head),
+            ),
         }
     }
 }
 
 impl Plotter for CommandHist {
-    fn plot(
-        &self,
-        call: &EvaluatedCall,
-        input: &Value,
-    ) -> Result<Value, LabeledError> {
+    fn plot(&self, call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError> {
         let CliOpts {
             height_op,
             width_op,
@@ -469,7 +481,11 @@ impl Plotter for CommandHist {
             .map(|(i, e)| match e {
                 Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
                 Value::Float { .. } => Ok((i as f32, e.as_float()? as f32)),
-                e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied", call.head)),
+                e => Err(LabeledError::new(format!(
+                    "Got {}, need integer or float.",
+                    e.get_type()
+                ))
+                .with_label("Incorrect type supplied", call.head)),
             })
             .collect();
 
@@ -488,7 +504,6 @@ impl Plotter for CommandHist {
         );
         let min_max_x = (min, max);
 
-
         let mut chart = Chart::new(max_x, max_y, min_max_x.0, min_max_x.1)
             .lineplot(&chart_shape(steps, bars, points, call, &chart_data)?)
             .to_string();
@@ -505,11 +520,7 @@ impl Plotter for CommandHist {
         Ok(Value::string(chart, call.head))
     }
 
-    fn plot_nested(
-        &self,
-        call: &EvaluatedCall,
-        input: &Value,
-    ) -> Result<Value, LabeledError> {
+    fn plot_nested(&self, call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError> {
         let CliOpts {
             height_op,
             width_op,
@@ -526,7 +537,10 @@ impl Plotter for CommandHist {
 
         let values = input.as_list()?;
         if values.len() > 5 {
-            return Err(LabeledError::new("Nested list can't contain more than 5 inner lists.").with_label("Nested list error.", call.head));
+            return Err(
+                LabeledError::new("Nested list can't contain more than 5 inner lists.")
+                    .with_label("Nested list error.", call.head),
+            );
         }
 
         let mut data = vec![];
@@ -540,7 +554,11 @@ impl Plotter for CommandHist {
                 .map(|(i, e)| match e {
                     Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
                     Value::Float { .. } => Ok((i as f32, e.as_float()? as f32)),
-                    e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied.", call.head)),
+                    e => Err(LabeledError::new(format!(
+                        "Got {}, need integer or float.",
+                        e.get_type()
+                    ))
+                    .with_label("Incorrect type supplied.", call.head)),
                 })
                 .collect();
 
@@ -577,15 +595,17 @@ impl Plotter for CommandHist {
             .collect();
 
         check_chart_shape(steps, bars, points, call)?;
-        let shapes: Vec<Shape> = (&hist_data)
+        let shapes: Vec<Shape> = hist_data
             .iter()
             .map(|data| chart_shape(steps, bars, points, call, data).unwrap())
             .collect();
-        let charts = (&shapes).iter()
+        let charts = shapes
+            .iter()
             .enumerate()
-            .fold(&mut Chart::new(max_x, max_y, min, max), |chart, (i, shape)| {
-                chart.linecolorplot(shape, COLORS[i])
-            })
+            .fold(
+                &mut Chart::new(max_x, max_y, min, max),
+                |chart, (i, shape)| chart.linecolorplot(shape, COLORS[i]),
+            )
             .to_string();
 
         let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
@@ -659,7 +679,8 @@ impl SimplePluginCommand for CommandHist {
         match input.as_list() {
             Ok(list) => {
                 if list.is_empty() {
-                    return Err(LabeledError::new("Can't plot a zero element list.").with_label( "No elements in the list.", call.head));
+                    return Err(LabeledError::new("Can't plot a zero element list.")
+                        .with_label("No elements in the list.", call.head));
                 }
                 let (value_type, list_len_op) = check_equality_of_list(list, call)?;
 
@@ -671,29 +692,31 @@ impl SimplePluginCommand for CommandHist {
                     // we have a normal plot, single list of numbers
                     match value_type {
                         Type::Float | Type::Int => self.plot(call, input),
-                        e =>  Err(LabeledError::new(format!("List type is {}, but should be float or int.", e)).with_label("Incorrect List type.", call.head)),
+                        e => Err(LabeledError::new(format!(
+                            "List type is {}, but should be float or int.",
+                            e
+                        ))
+                        .with_label("Incorrect List type.", call.head)),
                     }
                 }
-            },
-            Err(e) => Err(LabeledError::new(format!("Input type should be a list: {}.", e)).with_label( "Incorrect input type.", call.head)),
+            }
+            Err(e) => Err(
+                LabeledError::new(format!("Input type should be a list: {}.", e))
+                    .with_label("Incorrect input type.", call.head),
+            ),
         }
     }
 }
 
 impl Plotter for CommandXyplot {
-    fn plot(
-        &self,
-        call: &EvaluatedCall,
-        _input: &Value,
-    ) -> Result<Value, LabeledError> {
-        Err(LabeledError::new( "Doesn't make sense to plot an xyplot with a single list of values.").with_label("Plot type error.", call.head))
+    fn plot(&self, call: &EvaluatedCall, _input: &Value) -> Result<Value, LabeledError> {
+        Err(
+            LabeledError::new("Doesn't make sense to plot an xyplot with a single list of values.")
+                .with_label("Plot type error.", call.head),
+        )
     }
 
-    fn plot_nested(
-        &self,
-        call: &EvaluatedCall,
-        input: &Value,
-    ) -> Result<Value, LabeledError> {
+    fn plot_nested(&self, call: &EvaluatedCall, input: &Value) -> Result<Value, LabeledError> {
         let CliOpts {
             height_op,
             width_op,
@@ -710,7 +733,10 @@ impl Plotter for CommandXyplot {
 
         let values = input.as_list()?;
         if values.len() > 5 {
-            return Err(LabeledError::new("Nested list can't contain more than 5 inner lists.").with_label("Nested list error.", call.head));
+            return Err(
+                LabeledError::new("Nested list can't contain more than 5 inner lists.")
+                    .with_label("Nested list error.", call.head),
+            );
         }
 
         let mut data = vec![];
@@ -724,7 +750,11 @@ impl Plotter for CommandXyplot {
                 .map(|(i, e)| match e {
                     Value::Int { .. } => Ok((i as f32, e.as_int()? as f32)),
                     Value::Float { .. } => Ok((i as f32, e.as_float()? as f32)),
-                    e => Err(LabeledError::new(format!("Got {}, need integer or float.", e.get_type())).with_label("Incorrect type supplied.", call.head)),
+                    e => Err(LabeledError::new(format!(
+                        "Got {}, need integer or float.",
+                        e.get_type()
+                    ))
+                    .with_label("Incorrect type supplied.", call.head)),
                 })
                 .collect();
 
@@ -738,7 +768,10 @@ impl Plotter for CommandXyplot {
             data.push((min_max_x, v?));
         }
         if data.len() != 2 {
-            return Err(LabeledError::new("xyplot requires a nested list of length 2.").with_label( "Wrong number of dimensions in xyplot.", call.head));
+            return Err(
+                LabeledError::new("xyplot requires a nested list of length 2.")
+                    .with_label("Wrong number of dimensions in xyplot.", call.head),
+            );
         }
 
         let (min, max) = {
@@ -756,7 +789,6 @@ impl Plotter for CommandXyplot {
         let charts = chart
             .lineplot(&chart_shape(steps, bars, points, call, &chart_data[0])?)
             .to_string();
-
 
         let mut final_chart = TAB.to_owned() + &charts.replace('\n', &format!("\n{}", TAB));
 
@@ -824,7 +856,8 @@ impl SimplePluginCommand for CommandXyplot {
         match input.as_list() {
             Ok(list) => {
                 if list.is_empty() {
-                    return Err(LabeledError::new("Can't plot a zero element list.").with_label( "No elements in the list.", call.head));
+                    return Err(LabeledError::new("Can't plot a zero element list.")
+                        .with_label("No elements in the list.", call.head));
                 }
                 let (value_type, list_len_op) = check_equality_of_list(list, call)?;
 
@@ -836,11 +869,18 @@ impl SimplePluginCommand for CommandXyplot {
                     // we have a normal plot, single list of numbers
                     match value_type {
                         Type::Float | Type::Int => self.plot(call, input),
-                        e =>  Err(LabeledError::new(format!("List type is {}, but should be float or int.", e)).with_label("Incorrect List type.", call.head)),
+                        e => Err(LabeledError::new(format!(
+                            "List type is {}, but should be float or int.",
+                            e
+                        ))
+                        .with_label("Incorrect List type.", call.head)),
                     }
                 }
-            },
-            Err(e) => Err(LabeledError::new(format!("Input type should be a list: {}.", e)).with_label( "Incorrect input type.", call.head)),
+            }
+            Err(e) => Err(
+                LabeledError::new(format!("Input type should be a list: {}.", e))
+                    .with_label("Incorrect input type.", call.head),
+            ),
         }
     }
 }
@@ -873,13 +913,17 @@ impl SimplePluginCommand for CommandPlotConfig {
         _input: &Value,
     ) -> Result<Value, LabeledError> {
         match engine.get_plugin_config() {
-            Ok(config) => {
-                match config {
-                    Some(config) => Ok(config.clone()),
-                    None => Err(LabeledError::new("Configuration for this plugin was not found in `$env.config.plugins.plot`").with_label("No config sent", call.head)),
-                }
-            }
-            Err(_) => Err(LabeledError::new("Configuration for this plugin was not found in `$env.config.plugins.plot`").with_label("No config sent", call.head)),
+            Ok(config) => match config {
+                Some(config) => Ok(config.clone()),
+                None => Err(LabeledError::new(
+                    "Configuration for this plugin was not found in `$env.config.plugins.plot`",
+                )
+                .with_label("No config sent", call.head)),
+            },
+            Err(_) => Err(LabeledError::new(
+                "Configuration for this plugin was not found in `$env.config.plugins.plot`",
+            )
+            .with_label("No config sent", call.head)),
         }
     }
 }
