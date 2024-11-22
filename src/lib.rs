@@ -139,10 +139,10 @@ fn check_chart_shape<'a>(
 fn min_max(series: &[f32]) -> (f32, f32) {
     let min = series
         .iter()
-        .fold(std::f32::MAX, |accu, &x| if x < accu { x } else { accu });
+        .fold(f32::MAX, |accu, &x| if x < accu { x } else { accu });
     let max = series
         .iter()
-        .fold(std::f32::MIN, |accu, &x| if x > accu { x } else { accu });
+        .fold(f32::MIN, |accu, &x| if x > accu { x } else { accu });
     (min, max)
 }
 
@@ -349,11 +349,11 @@ impl Plotter for CommandPlot {
 
         // let shapes = chart_data.into_iter().map(|data| chart_shape(steps, bars, points, call, &data));
         check_chart_shape(steps, bars, points, call)?;
-        let shapes: Vec<Shape> = (&chart_data)
+        let shapes: Vec<Shape> = chart_data
             .iter()
             .map(|data| chart_shape(steps, bars, points, call, data).unwrap())
             .collect();
-        let charts = (&shapes)
+        let charts = shapes
             .iter()
             .enumerate()
             .fold(
@@ -595,11 +595,11 @@ impl Plotter for CommandHist {
             .collect();
 
         check_chart_shape(steps, bars, points, call)?;
-        let shapes: Vec<Shape> = (&hist_data)
+        let shapes: Vec<Shape> = hist_data
             .iter()
             .map(|data| chart_shape(steps, bars, points, call, data).unwrap())
             .collect();
-        let charts = (&shapes)
+        let charts = shapes
             .iter()
             .enumerate()
             .fold(
