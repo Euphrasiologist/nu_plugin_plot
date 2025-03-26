@@ -197,12 +197,11 @@ fn check_equality_of_list(
     Ok((first_type.clone(), *first_len_op))
 }
 
-pub struct PluginPlot;
+pub struct PluginPlot {}
 
 struct CommandPlot;
 struct CommandHist;
 struct CommandXyplot;
-struct CommandPlotConfig;
 
 impl Plugin for PluginPlot {
     fn version(&self) -> String {
@@ -845,41 +844,3 @@ impl SimplePluginCommand for CommandXyplot {
     }
 }
 
-impl SimplePluginCommand for CommandPlotConfig {
-    type Plugin = PluginPlot;
-
-    fn name(&self) -> &str {
-        "plot-config"
-    }
-
-    fn signature(&self) -> Signature {
-        Signature::build("plot-config")
-            .description("Show plugin configuration")
-            .extra_description("The configuration is set under $env.config.plugins.plot")
-            .category(Category::Experimental)
-            .search_terms(vec!["plot".into(), "configuration".into()])
-            .input_output_type(Type::Nothing, Type::table())
-    }
-
-    fn description(&self) -> &str {
-        "Show plugin configuration"
-    }
-
-    fn run(
-        &self,
-        _plugin: &Self::Plugin,
-        engine: &nu_plugin::EngineInterface,
-        call: &EvaluatedCall,
-        _input: &Value,
-    ) -> Result<Value, LabeledError> {
-        match engine.get_plugin_config() {
-            Ok(config) => {
-                match config {
-                    Some(config) => Ok(config.clone()),
-                    None => Err(LabeledError::new("Configuration for this plugin was not found in `$env.config.plugins.plot`").with_label("No config sent", call.head)),
-                }
-            }
-            Err(_) => Err(LabeledError::new("Configuration for this plugin was not found in `$env.config.plugins.plot`").with_label("No config sent", call.head)),
-        }
-    }
-}
