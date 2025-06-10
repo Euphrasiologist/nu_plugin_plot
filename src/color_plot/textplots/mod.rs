@@ -110,13 +110,13 @@ pub enum Shape<'a> {
 /// Provides an interface for drawing plots.
 pub trait Plot<'a> {
     /// Draws a [line chart](https://en.wikipedia.org/wiki/Line_chart) of points connected by straight line segments.
-    fn lineplot(&'a mut self, shape: &'a Shape) -> &'a mut Chart;
+    fn lineplot(&'a mut self, shape: &'a Shape) -> &'a mut Chart<'a>;
 }
 
 /// Provides an interface for drawing colored plots.
 pub trait ColorPlot<'a> {
     /// Draws a [line chart](https://en.wikipedia.org/wiki/Line_chart) of points connected by straight line segments using the specified color
-    fn linecolorplot(&'a mut self, shape: &'a Shape, color: PixelColor) -> &'a mut Chart;
+    fn linecolorplot(&'a mut self, shape: &'a Shape, color: PixelColor) -> &'a mut Chart<'a>;
 }
 
 impl<'a> Default for Chart<'a> {
@@ -399,7 +399,7 @@ impl<'a> Chart<'a> {
 }
 
 impl<'a> ColorPlot<'a> for Chart<'a> {
-    fn linecolorplot(&'a mut self, shape: &'a Shape, color: PixelColor) -> &'a mut Chart {
+    fn linecolorplot(&'a mut self, shape: &'a Shape, color: PixelColor) -> &'a mut Chart<'a> {
         self.shapes.push((shape, Some(color)));
         if self.y_ranging == ChartRangeMethod::AutoRange {
             self.rescale(shape);
@@ -409,7 +409,7 @@ impl<'a> ColorPlot<'a> for Chart<'a> {
 }
 
 impl<'a> Plot<'a> for Chart<'a> {
-    fn lineplot(&'a mut self, shape: &'a Shape) -> &'a mut Chart {
+    fn lineplot(&'a mut self, shape: &'a Shape) -> &'a mut Chart<'a> {
         self.shapes.push((shape, None));
         if self.y_ranging == ChartRangeMethod::AutoRange {
             self.rescale(shape);

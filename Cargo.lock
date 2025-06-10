@@ -22,9 +22,9 @@ dependencies = [
 
 [[package]]
 name = "aho-corasick"
-version = "1.0.5"
+version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c378d78423fdad8089616f827526ee33c19f2fddbd5de1629152c9593ba4783"
+checksum = "8e60d3430d3a69478ad0993f19238d2df97c507009a52b3c10addcd7f6bcb916"
 dependencies = [
  "memchr",
 ]
@@ -455,9 +455,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.8.0"
+version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3954d50fe15b02142bf25d3b8bdadb634ec3948f103d04ffe3031bc8fe9d7058"
+checksum = "cea70ddb795996207ad57735b50c5982d8844f38ba9ee5f1aedcfb708a2aa11e"
 dependencies = [
  "equivalent",
  "hashbrown 0.15.0",
@@ -490,9 +490,9 @@ checksum = "7655c9839580ee829dfacba1d1278c2b7883e50a277ff7541299489d6bdfdc45"
 
 [[package]]
 name = "itertools"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
 dependencies = [
  "either",
 ]
@@ -590,10 +590,11 @@ dependencies = [
 
 [[package]]
 name = "lscolors"
-version = "0.17.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53304fff6ab1e597661eee37e42ea8c47a146fca280af902bb76bff8a896e523"
+checksum = "61183da5de8ba09a58e330d55e5ea796539d8443bd00fdeb863eac39724aa4ab"
 dependencies = [
+ "aho-corasick",
  "nu-ansi-term",
 ]
 
@@ -623,9 +624,9 @@ dependencies = [
 
 [[package]]
 name = "miette"
-version = "7.5.0"
+version = "7.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a955165f87b37fd1862df2a59547ac542c77ef6d17c666f619d1ad22dd89484"
+checksum = "5f98efec8807c63c752b5bd61f862c165c115b0a35685bdcfd9238c7aeb592b7"
 dependencies = [
  "cfg-if",
  "miette-derive",
@@ -635,15 +636,14 @@ dependencies = [
  "supports-unicode",
  "terminal_size",
  "textwrap",
- "thiserror 1.0.57",
  "unicode-width",
 ]
 
 [[package]]
 name = "miette-derive"
-version = "7.5.0"
+version = "7.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf45bf44ab49be92fd1227a3be6fc6f617f1a337c06af54981048574d8783147"
+checksum = "db5b29714e950dbb20d5e6f74f9dcec4edbcc1067bb7f8ed198c097b8c1a818b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -719,9 +719,9 @@ dependencies = [
 
 [[package]]
 name = "nu-derive-value"
-version = "0.103.0"
+version = "0.105.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f1f5198366892552a9a827a61a27e31543a0827c55ccfb6bf060489cec80d25"
+checksum = "e14fc658b821f69a899cf7f00af34fd1061b4267927f71da5eb4be69d50270d5"
 dependencies = [
  "heck",
  "proc-macro-error2",
@@ -732,9 +732,9 @@ dependencies = [
 
 [[package]]
 name = "nu-engine"
-version = "0.103.0"
+version = "0.105.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cb715bb4c18e4259d21c5b710f04f7190c9803211e2a0baa31ec3a5841daa56"
+checksum = "26c934fe66a370117da47e9d6ea0dc3f55a1f836058051d6a40566b18ea5e5ff"
 dependencies = [
  "log",
  "nu-glob",
@@ -745,18 +745,15 @@ dependencies = [
 
 [[package]]
 name = "nu-glob"
-version = "0.103.0"
+version = "0.105.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "904fa576593ed75439eec561f62824bbe55f4a05f1c8239309a939d43e0ad704"
-dependencies = [
- "nu-protocol",
-]
+checksum = "2abebf3a7476e67c43062b0161f5118bb5b7adbd902253e88af6b0f4d9f221b2"
 
 [[package]]
 name = "nu-path"
-version = "0.103.0"
+version = "0.105.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6e3a55f26e42d1f98fbb4f41fa4fcc7dee1f61f13c5eabda5ca90e78825b2fa"
+checksum = "e626b137b5232bc59b5ff33c9a9efbbeedcb13a7ea828e1d58c2a1a959ee17a7"
 dependencies = [
  "dirs",
  "omnipath",
@@ -766,9 +763,9 @@ dependencies = [
 
 [[package]]
 name = "nu-plugin"
-version = "0.103.0"
+version = "0.105.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f35f2290c077441edfde50745b501ba5ffad11217d5d01168cf1ab1b0e4c03d"
+checksum = "6aee6255d7c4122196bbc7a3840637f569d9377d41f1fb7d257de7b95421946b"
 dependencies = [
  "log",
  "nix",
@@ -782,9 +779,9 @@ dependencies = [
 
 [[package]]
 name = "nu-plugin-core"
-version = "0.103.0"
+version = "0.105.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ba6f1d1c7f6ca9852c26e8e65a0f530b8fa3a1237a6c62de089ccaf6c1645fe"
+checksum = "8f1af7a20d0b963b3d66f02e2c0ec78c4cd7e55add0d74b35fdfea8e1718bfea"
 dependencies = [
  "interprocess",
  "log",
@@ -798,9 +795,9 @@ dependencies = [
 
 [[package]]
 name = "nu-plugin-protocol"
-version = "0.103.0"
+version = "0.105.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88bef165a59909561b349fb3eda7e16afae8f8d06d6c99527b4545c086b51f87"
+checksum = "377ee6d9d568bb9bc787939bbf1860b41b08b12f903f2a79b626bed2f5a67a01"
 dependencies = [
  "nu-protocol",
  "nu-utils",
@@ -812,9 +809,9 @@ dependencies = [
 
 [[package]]
 name = "nu-protocol"
-version = "0.103.0"
+version = "0.105.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca35b5860d171e8e0994d42373f62fc99fb7a0b205e5d8a38897e2869d5f6ab7"
+checksum = "8512d1475ee51943e5c9e895a0adec4ca86b054ccddbc80552df844682359739"
 dependencies = [
  "brotli",
  "bytes",
@@ -831,6 +828,7 @@ dependencies = [
  "miette",
  "nix",
  "nu-derive-value",
+ "nu-glob",
  "nu-path",
  "nu-system",
  "nu-utils",
@@ -844,14 +842,15 @@ dependencies = [
  "thiserror 2.0.12",
  "typetag",
  "web-time",
+ "windows 0.56.0",
  "windows-sys 0.48.0",
 ]
 
 [[package]]
 name = "nu-system"
-version = "0.103.0"
+version = "0.105.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70bb9b1c59acd274bd36b4879e1e03491a3ee2f24689a9070c66fbd8aed23b27"
+checksum = "8787eca8da1324e74476060f9405a35cb46bd383b58c2b397ad4ab50fafde85e"
 dependencies = [
  "chrono",
  "itertools",
@@ -869,9 +868,9 @@ dependencies = [
 
 [[package]]
 name = "nu-utils"
-version = "0.103.0"
+version = "0.105.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f01345a3c94f75397020250286c536e1b306cb714b2931c1a1c9a3318254793"
+checksum = "b259b35027b1ae1f68f2fdfa90cb404c2929050bbf7e4ae7708c98611a13616b"
 dependencies = [
  "crossterm",
  "crossterm_winapi",
